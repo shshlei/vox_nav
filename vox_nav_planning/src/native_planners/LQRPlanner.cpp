@@ -14,6 +14,8 @@
 
 #include "vox_nav_planning/native_planners/LQRPlanner.hpp"
 
+#include <ompl/control/PathControl.h>
+
 ompl::control::LQRPlanner::LQRPlanner(const SpaceInformationPtr & si)
 : base::Planner(si, "LQRPlanner")
 {
@@ -51,8 +53,8 @@ ompl::base::PlannerStatus ompl::control::LQRPlanner::solve(
   const base::PlannerTerminationCondition & ptc)
 {
   checkValidity();
-  base::Goal * goal = pdef_->getGoal().get();
-  auto * goal_s = dynamic_cast<base::GoalSampleableRegion *>(goal);
+  // base::Goal * goal = pdef_->getGoal().get();
+  // auto * goal_s = dynamic_cast<base::GoalSampleableRegion *>(goal);
 
   // get the goal node and state
   auto * goal_state = si_->allocState();

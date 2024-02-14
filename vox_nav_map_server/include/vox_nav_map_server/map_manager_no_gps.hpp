@@ -15,63 +15,42 @@
 #ifndef VOX_NAV_MAP_SERVER__MAP_MANAGER_NO_GPS_HPP_
 #define VOX_NAV_MAP_SERVER__MAP_MANAGER_NO_GPS_HPP_
 
-#include <rclcpp/rclcpp.hpp>
-#include <rclcpp_action/rclcpp_action.hpp>
-#include <rclcpp/service.hpp>
-#include <rclcpp/client.hpp>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/transform_datatypes.h>
-#include <tf2_eigen/tf2_eigen.h>
-#include <tf2/convert.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2_ros/static_transform_broadcaster.h>
-#include <tf2_ros/transform_broadcaster.h>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
-#include <visualization_msgs/msg/marker_array.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <geometry_msgs/msg/pose_array.hpp>
-#include <nav_msgs/msg/odometry.hpp>
+#include "vox_nav_map_server/map_manager_helpers.hpp"
 #include <vox_nav_msgs/msg/oriented_nav_sat_fix.hpp>
 #include <vox_nav_msgs/srv/get_traversability_map.hpp>
 #include <vox_nav_utilities/pcl_helpers.hpp>
 #include <vox_nav_utilities/tf_helpers.hpp>
-#include <vox_nav_utilities/map_manager_helpers.hpp>
-#include <octomap_msgs/msg/octomap.hpp>
-#include <octomap_msgs/conversions.h>
-#include <octomap/octomap.h>
-#include <octomap/octomap_utils.h>
-#include <pcl/common/common.h>
-#include <pcl/common/transforms.h>
-#include <pcl/conversions.h>
-#include <pcl/common/io.h>
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
+
+#include <rclcpp/client.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp/service.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
+
 #include <pcl_ros/transforms.hpp>
 
-#include <vector>
-#include <string>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <octomap_msgs/msg/octomap.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+
+#include <pcl/point_types.h>
+
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_listener.h>
+
 #include <memory>
 #include <mutex>
+#include <string>
+#include <vector>
 
-/**
- * @brief namespace for vox_nav map server. The map server reads map from disk.
- *        The map needs to cd native format .pcd
- *        When you created the map the datum of the map must have been saved.
- *        Datum is GPS coordinates and orination info from absolute headed IMU.
- *        Using this origin this map is georefenced and published as octomap as well as pointcloud that represents this
- * map
- *
- */
 namespace vox_nav_map_server
 {
 
 /**
  * @brief Hey Karen!, If you would like to see a manager this is your chance!. This
- * Manages a PCD MAP, the PCD map is converted to a cost regressed Octomap and a service interface is provided to access
- * map.
- *
- *
+ * Manages a PCD MAP, the PCD map is converted to a cost regressed Octomap and a service interface is provided to access map.
  */
 class MapManagerNoGPS : public rclcpp::Node
 {
@@ -85,12 +64,7 @@ public:
     int remove_outlier_min_neighbors_in_radius;
     bool apply_filters;
     PCDPreProcessingParams()
-      : pcd_map_downsample_voxel_size(0.1)
-      , remove_outlier_mean_K(10)
-      , remove_outlier_stddev_threshold(0.1)
-      , remove_outlier_radius_search(0.1)
-      , remove_outlier_min_neighbors_in_radius(1)
-      , apply_filters(false)
+    : pcd_map_downsample_voxel_size(0.1), remove_outlier_mean_K(10), remove_outlier_stddev_threshold(0.1), remove_outlier_radius_search(0.1), remove_outlier_min_neighbors_in_radius(1), apply_filters(false)
     {
     }
   };
@@ -109,17 +83,8 @@ public:
     double max_color_range;
     std::vector<double> cost_critic_weights;
     CostRegressionParams()
-      : uniform_sample_radius(0.2)
-      , surfel_radius(0.1)
-      , max_allowed_tilt(10)
-      , max_allowed_point_deviation(0.1)
-      , max_allowed_energy_gap(0.1)
-      , node_elevation_distance(1)
-      , plane_fit_threshold(10)
-      , robot_mass(0.1)
-      , average_speed(0.1)
-      , max_color_range(255.0)
-      , cost_critic_weights({ 0.33, 0.33, 0.33 })
+    : uniform_sample_radius(0.2), surfel_radius(0.1), max_allowed_tilt(10), max_allowed_point_deviation(0.1), max_allowed_energy_gap(0.1), node_elevation_distance(1),
+    plane_fit_threshold(10), robot_mass(0.1), average_speed(0.1), max_color_range(255.0), cost_critic_weights({0.33, 0.33, 0.33})
     {
     }
   };
@@ -184,43 +149,44 @@ public:
    * @param response
    */
   void getGetTraversabilityMapCallback(const std::shared_ptr<rmw_request_id_t> request_header,
-                                       const std::shared_ptr<vox_nav_msgs::srv::GetTraversabilityMap::Request> request,
-                                       std::shared_ptr<vox_nav_msgs::srv::GetTraversabilityMap::Response> response);
+    const std::shared_ptr<vox_nav_msgs::srv::GetTraversabilityMap::Request> request,
+    std::shared_ptr<vox_nav_msgs::srv::GetTraversabilityMap::Response> response);
 
 protected:
+
+  std::string pcd_map_filename_;
+
+  // Pointcloud map is stroed here
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcd_map_pointcloud_;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr pure_traversable_pointcloud_;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr pure_non_traversable_pointcloud_;
+  pcl::PointCloud<pcl::PointSurfel>::Ptr elevated_surfel_pointcloud_;
+
+  sensor_msgs::msg::PointCloud2::SharedPtr traversable_pointcloud_msg_;
+  sensor_msgs::msg::PointCloud2::SharedPtr non_traversable_pointcloud_msg_;
+
+  sensor_msgs::msg::PointCloud2::SharedPtr elevated_surfels_pointcloud_msg_;
+  visualization_msgs::msg::MarkerArray::SharedPtr original_octomap_markers_msg_;
+  visualization_msgs::msg::MarkerArray::SharedPtr elevated_surfel_octomap_markers_msg_;
+
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr traversable_pointcloud_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr non_traversable_pointcloud_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr elevated_surfel_pcl_publisher_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr elevated_surfel_octomap_markers_publisher_;
+
+  octomap_msgs::msg::Octomap::SharedPtr original_octomap_msg_;
+  octomap_msgs::msg::Octomap::SharedPtr collision_octomap_msg_;
+  sensor_msgs::msg::PointCloud2::SharedPtr octomap_pointcloud_msg_;
+
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr octomap_pointloud_publisher_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr octomap_markers_publisher_;
+
   // Used to call a periodic callback function IOT publish octomap visuals
   rclcpp::TimerBase::SharedPtr timer_;
   // Service to provide Octomap, elevated surfel and elevated surfel poses
   rclcpp::Service<vox_nav_msgs::srv::GetTraversabilityMap>::SharedPtr get_traversability_map_service_;
   // publishes octomap in form of a point cloud message
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr octomap_pointloud_publisher_;
-  // publishes octomap in form of a point cloud message
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr elevated_surfel_pcl_publisher_;
-  // publishes octomap in form of a point cloud message
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr traversable_pointcloud_publisher_;
-  // publishes octomap in form of a point cloud message
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr non_traversable_pointcloud_publisher_;
-  // publish sampled node poses for planner to use.
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr octomap_markers_publisher_;
-  // publish sampled node poses for planner to use.
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr elevated_surfel_octomap_markers_publisher_;
 
-  // reusable octomap point loud message, dont need to recreate each time we publish
-  sensor_msgs::msg::PointCloud2::SharedPtr octomap_pointcloud_msg_;
-  // reusable octomap point loud message, dont need to recreate each time we publish
-  sensor_msgs::msg::PointCloud2::SharedPtr elevated_surfels_pointcloud_msg_;
-  // reusable octomap point loud message, dont need to recreate each time we publish
-  sensor_msgs::msg::PointCloud2::SharedPtr traversable_pointcloud_msg_;
-  // reusable octomap point loud message, dont need to recreate each time we publish
-  sensor_msgs::msg::PointCloud2::SharedPtr non_traversable_pointcloud_msg_;
-  // reusable octomap marker array message, used to publish occupied nodes onlyu
-  visualization_msgs::msg::MarkerArray::SharedPtr original_octomap_markers_msg_;
-  // reusable octomap marker array message, used to publish occupied nodes onlyu
-  visualization_msgs::msg::MarkerArray::SharedPtr elevated_surfel_octomap_markers_msg_;
-  // octomap acquired from original PCD map
-  octomap_msgs::msg::Octomap::SharedPtr original_octomap_msg_;
-
-  octomap_msgs::msg::Octomap::SharedPtr collision_octomap_msg_;
   // Surfels centers are elevated by node_elevation_distance_, and are stored in this
   // octomap, this maps is used by planner to sample states that are
   // strictly laying on ground but not touching. So it constrains the path to be on ground
@@ -229,16 +195,9 @@ protected:
   // it is also required to have orientation information of surfels, they are kept in
   // elevated_surfel_poses_msg_
   geometry_msgs::msg::PoseArray::SharedPtr elevated_surfel_poses_msg_;
-  // otree object to read and store binary octomap from disk
-  // rclcpp parameters from yaml file: full path to octomap file in disk
-  std::string pcd_map_filename_;
-  // Pointcloud map is stroed here
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcd_map_pointcloud_;
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr pure_traversable_pointcloud_;
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr pure_non_traversable_pointcloud_;
-  // pcl::PointCloud<pcl::PointXYZRGB>::Ptr elevated_surfels_pointcloud_;
-  //  Pointcloud map is stroed here
-  pcl::PointCloud<pcl::PointSurfel>::Ptr elevated_surfel_pointcloud_;
+
+
+
   // rclcpp parameters from yaml file: topic name for published octomap
   std::string octomap_publish_topic_name_;
   // rclcpp parameters from yaml file: topic name for published octomap as cloud

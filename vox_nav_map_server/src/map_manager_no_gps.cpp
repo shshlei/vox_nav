@@ -14,14 +14,31 @@
 
 #include "vox_nav_map_server/map_manager_no_gps.hpp"
 
+#include <pcl/common/common.h>
+#include <pcl/common/io.h>
+#include <pcl/common/transforms.h>
+#include <pcl/conversions.h>
+#include <pcl_conversions/pcl_conversions.h>
+
+#include <octomap/octomap.h>
+#include <octomap/octomap_utils.h>
+#include <octomap_msgs/conversions.h>
+
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/convert.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2_eigen/tf2_eigen.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
+#include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
-#include <algorithm>
 
 namespace vox_nav_map_server
 {
-MapManagerNoGPS::MapManagerNoGPS() : Node("vox_nav_map_manager_no_gps_rclcpp_node"), map_configured_(false)
+MapManagerNoGPS::MapManagerNoGPS()
+: Node("vox_nav_map_manager_no_gps_rclcpp_node"), map_configured_(false)
 {
   RCLCPP_INFO(this->get_logger(), "Creating..");
   // initialize shared pointers asap
@@ -70,7 +87,7 @@ MapManagerNoGPS::MapManagerNoGPS() : Node("vox_nav_map_manager_no_gps_rclcpp_nod
   declare_parameter("plane_fit_threshold", 0.2);
   declare_parameter("robot_mass", 0.1);
   declare_parameter("average_speed", 1.0);
-  declare_parameter("cost_critic_weights", std::vector<double>({ 0.8, 0.1, 0.1 }));
+  declare_parameter("cost_critic_weights", std::vector<double>({0.8, 0.1, 0.1}));
 
   // get this node's parameters
   get_parameter("pcd_map_filename", pcd_map_filename_);
@@ -107,34 +124,34 @@ MapManagerNoGPS::MapManagerNoGPS() : Node("vox_nav_map_manager_no_gps_rclcpp_nod
 
   // service hooks for get maps and surfels
   get_traversability_map_service_ = this->create_service<vox_nav_msgs::srv::GetTraversabilityMap>(
-      std::string("get_traversability_map"),
-      std::bind(&MapManagerNoGPS::getGetTraversabilityMapCallback, this, std::placeholders::_1, std::placeholders::_2,
-                std::placeholders::_3));
+    std::string("get_traversability_map"),
+    std::bind(&MapManagerNoGPS::getGetTraversabilityMapCallback, this, std::placeholders::_1, std::placeholders::_2,
+      std::placeholders::_3));
 
   timer_ = this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(1000 / octomap_publish_frequency_)),
-                                   std::bind(&MapManagerNoGPS::timerCallback, this));
+    std::bind(&MapManagerNoGPS::timerCallback, this));
 
   octomap_pointloud_publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-      octomap_point_cloud_publish_topic_, rclcpp::SystemDefaultsQoS());
+    octomap_point_cloud_publish_topic_, rclcpp::SystemDefaultsQoS());
 
   elevated_surfel_pcl_publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-      "vox_nav/map_server/elevated_surfel_pointcloud", rclcpp::SystemDefaultsQoS());
+    "vox_nav/map_server/elevated_surfel_pointcloud", rclcpp::SystemDefaultsQoS());
 
   traversable_pointcloud_publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-      traversable_pointcloud_publish_topic_, rclcpp::SystemDefaultsQoS());
+    traversable_pointcloud_publish_topic_, rclcpp::SystemDefaultsQoS());
 
   non_traversable_pointcloud_publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-      non_traversable_pointcloud_publish_topic_, rclcpp::SystemDefaultsQoS());
+    non_traversable_pointcloud_publish_topic_, rclcpp::SystemDefaultsQoS());
 
   octomap_markers_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-      octomap_markers_publish_topic_, rclcpp::SystemDefaultsQoS());
+    octomap_markers_publish_topic_, rclcpp::SystemDefaultsQoS());
 
   elevated_surfel_octomap_markers_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-      "vox_nav/map_server/elevated_surfel_markers", rclcpp::SystemDefaultsQoS());
+    "vox_nav/map_server/elevated_surfel_markers", rclcpp::SystemDefaultsQoS());
 
   pcd_map_pointcloud_ = vox_nav_utilities::loadPointcloudFromPcd(pcd_map_filename_.c_str());
 
-  RCLCPP_INFO(this->get_logger(), "Loaded a PCD map with %d points", pcd_map_pointcloud_->points.size());
+  RCLCPP_INFO(this->get_logger(), "Loaded a PCD map with %ld points", pcd_map_pointcloud_->points.size());
 }
 
 MapManagerNoGPS::~MapManagerNoGPS()
@@ -147,9 +164,9 @@ void MapManagerNoGPS::timerCallback()
   // Since this is static map we need to georefence this only once not each time
   std::call_once(configure_map_once_, [this]() {
     RCLCPP_INFO(get_logger(),
-                "Configuring pcd map with given parameters,"
-                " But the map and octomap will be published at %i frequency rate",
-                octomap_publish_frequency_);
+      "Configuring pcd map with given parameters,"
+      " But the map and octomap will be published at %i frequency rate",
+      octomap_publish_frequency_);
 
     preProcessPCDMap();
     regressCosts();
@@ -163,22 +180,20 @@ void MapManagerNoGPS::timerCallback()
 
 void MapManagerNoGPS::preProcessPCDMap()
 {
-  if (preprocess_params_.pcd_map_downsample_voxel_size > 0.0)
-  {
+  if (preprocess_params_.pcd_map_downsample_voxel_size > 0.0) {
     pcd_map_pointcloud_ = vox_nav_utilities::downsampleInputCloud<pcl::PointXYZRGB>(
-        pcd_map_pointcloud_, preprocess_params_.pcd_map_downsample_voxel_size);
+      pcd_map_pointcloud_, preprocess_params_.pcd_map_downsample_voxel_size);
+
+    RCLCPP_INFO(this->get_logger(), "PCD Map downsampled, it now has %ld points"
+        " adjust the parameters if the map looks off",
+        pcd_map_pointcloud_->points.size());
   }
 
-  RCLCPP_INFO(this->get_logger(),
-              "PCD Map downsampled, it now has %d points"
-              " adjust the parameters if the map looks off",
-              pcd_map_pointcloud_->points.size());
-  if (preprocess_params_.apply_filters)
-  {
+  if (preprocess_params_.apply_filters) {
     pcd_map_pointcloud_ = vox_nav_utilities::removeOutliersFromInputCloud(
-        pcd_map_pointcloud_, preprocess_params_.remove_outlier_mean_K,
-        preprocess_params_.remove_outlier_stddev_threshold,
-        vox_nav_utilities::OutlierRemovalType::StatisticalOutlierRemoval);
+      pcd_map_pointcloud_, preprocess_params_.remove_outlier_mean_K,
+      preprocess_params_.remove_outlier_stddev_threshold,
+      vox_nav_utilities::OutlierRemovalType::StatisticalOutlierRemoval);
     pcd_map_pointcloud_ = vox_nav_utilities::removeNans<pcl::PointXYZRGB>(pcd_map_pointcloud_);
 
     /*pcd_map_pointcloud_ = vox_nav_utilities::removeOutliersFromInputCloud(
@@ -188,9 +203,9 @@ void MapManagerNoGPS::preProcessPCDMap()
       vox_nav_utilities::OutlierRemovalType::RadiusOutlierRemoval);*/
 
     RCLCPP_INFO(this->get_logger(),
-                "Applied a series of noise removal functions"
-                " PCD Map downsampled, it now has %d points",
-                pcd_map_pointcloud_->points.size());
+      "Applied a series of noise removal functions"
+      " PCD Map downsampled, it now has %ld points",
+      pcd_map_pointcloud_->points.size());
   }
   // apply a rigid body transfrom if it was given one
   /*pcd_map_pointcloud_ = vox_nav_utilities::transformCloud(
@@ -201,7 +216,7 @@ void MapManagerNoGPS::preProcessPCDMap()
       get_logger()));*/
 
   Eigen::Affine3d bt = vox_nav_utilities::getRigidBodyTransform(pcd_map_transform_matrix_.translation_,
-                                                                pcd_map_transform_matrix_.rpyIntrinsic_, get_logger());
+    pcd_map_transform_matrix_.rpyIntrinsic_, get_logger());
   auto final_tr = tf2::eigenToTransform(bt);
   pcl_ros::transformPointCloud(*pcd_map_pointcloud_, *pcd_map_pointcloud_, final_tr);
 
@@ -209,67 +224,63 @@ void MapManagerNoGPS::preProcessPCDMap()
   // segmentation, so mark all points as traversable
   // by painting them green > 0
   pcd_map_pointcloud_ =
-      vox_nav_utilities::set_cloud_color(pcd_map_pointcloud_, std::vector<double>({ 0.0, 255.0, 0.0 }));
+    vox_nav_map_server::set_cloud_color(pcd_map_pointcloud_, std::vector<double>({0.0, 255.0, 0.0}));
 }
 
 void MapManagerNoGPS::regressCosts()
 {
   // seperate traversble points from non-traversable ones
-  auto pure_traversable_pcl = vox_nav_utilities::get_traversable_points(pcd_map_pointcloud_);
-  auto pure_non_traversable_pcl = vox_nav_utilities::get_non_traversable_points(pcd_map_pointcloud_);
+  auto pure_traversable_pcl = vox_nav_map_server::get_traversable_points(pcd_map_pointcloud_);
+  auto pure_non_traversable_pcl = vox_nav_map_server::get_non_traversable_points(pcd_map_pointcloud_);
 
   // uniformly sample nodes on top of traversable cloud
   auto uniformly_sampled_nodes = vox_nav_utilities::uniformlySampleCloud<pcl::PointXYZRGB>(
-      pure_traversable_pcl, cost_params_.uniform_sample_radius);
+    pure_traversable_pcl, cost_params_.uniform_sample_radius);
 
   // This is basically vector of cloud segments, each segments includes points representing a cell
   // The first element of pair is surfel_center_point while the second is pointcloud itself
-  auto surfels = vox_nav_utilities::surfelize_traversability_cloud(pure_traversable_pcl, uniformly_sampled_nodes,
-                                                                   cost_params_.surfel_radius);
+  auto surfels = vox_nav_map_server::surfelize_traversability_cloud(pure_traversable_pcl, uniformly_sampled_nodes,
+    cost_params_.surfel_radius);
 
   // this is acquired by merging all surfels
   pcl::PointCloud<pcl::PointXYZRGB> cost_regressed_cloud;
   // this is acquired by merging only elevated surfel cenroids
   pcl::PointCloud<pcl::PointSurfel> elevated_surfels_cloud;
 
-  for (auto&& i : surfels)
-  {
+  for (auto && i : surfels) {
     auto surfel_center_point = i.first;
     auto surfel_cloud = i.second;
 
     // fit a plane to this surfel cloud, in order to et its orientation
     pcl::ModelCoefficients::Ptr plane_model(new pcl::ModelCoefficients);
 
-    try
-    {
-      vox_nav_utilities::fit_plane_to_cloud(plane_model, surfel_cloud, cost_params_.plane_fit_threshold);
+    try {
+      vox_nav_map_server::fit_plane_to_cloud(plane_model, surfel_cloud, cost_params_.plane_fit_threshold);
     }
-    catch (...)
-    {
+    catch (...) {
       RCLCPP_ERROR(get_logger(),
-                   "Cannot fit a plane to current surfel points, this may occur if cell size is too small");
-      RCLCPP_ERROR(get_logger(), "Current surfel has %d points, Jumping to next surfel", surfel_cloud->points.size());
+        "Cannot fit a plane to current surfel points, this may occur if cell size is too small");
+      RCLCPP_ERROR(get_logger(), "Current surfel has %ld points, Jumping to next surfel", surfel_cloud->points.size());
       continue;
     }
 
     // extract rpy from plane equation
-    auto rpy = vox_nav_utilities::rpy_from_plane(*plane_model);
+    auto rpy = vox_nav_map_server::rpy_from_plane(*plane_model);
 
     // extract averge point deviation from surfel cloud this determines the roughness of cloud
-    double average_point_deviation = vox_nav_utilities::average_point_deviation_from_plane(surfel_cloud, *plane_model);
+    double average_point_deviation = vox_nav_map_server::average_point_deviation_from_plane(surfel_cloud, *plane_model);
 
     // extract max energy grap from surfel cloud, the higher this , the higher cost
-    double max_energy_gap =
-        vox_nav_utilities::max_energy_gap_in_cloud(surfel_cloud, cost_params_.robot_mass, cost_params_.average_speed);
+    double max_energy_gap = vox_nav_map_server::max_energy_gap_in_cloud(surfel_cloud, cost_params_.robot_mass, cost_params_.average_speed);
 
     // regulate all costs to be less than 1.0
     double max_tilt = std::max(std::abs(rpy[0]), std::abs(rpy[1]));
     double slope_cost = std::min(max_tilt / cost_params_.max_allowed_tilt, 1.0) * cost_params_.max_color_range;
     double energy_gap_cost =
-        std::min(max_energy_gap / cost_params_.max_allowed_energy_gap, 1.0) * cost_params_.max_color_range;
+      std::min(max_energy_gap / cost_params_.max_allowed_energy_gap, 1.0) * cost_params_.max_color_range;
     double deviation_of_points_cost =
-        std::min(average_point_deviation / cost_params_.max_allowed_point_deviation, 1.0) *
-        cost_params_.max_color_range;
+      std::min(average_point_deviation / cost_params_.max_allowed_point_deviation, 1.0) *
+      cost_params_.max_color_range;
 
     double total_cost = cost_params_.cost_critic_weights[0] * slope_cost +
                         cost_params_.cost_critic_weights[1] * deviation_of_points_cost +
@@ -279,14 +290,13 @@ void MapManagerNoGPS::regressCosts()
     if (max_tilt > cost_params_.max_allowed_tilt /*||
         max_energy_gap > cost_params_.max_allowed_energy_gap ||
         average_point_deviation > cost_params_.max_allowed_point_deviation ||
-        total_cost > 180*/)
-    {
-      surfel_cloud = vox_nav_utilities::set_cloud_color(surfel_cloud, std::vector<double>({ 255.0, 0, 0 }));
+        total_cost > 180*/
+    ) {
+      surfel_cloud = vox_nav_map_server::set_cloud_color(surfel_cloud, std::vector<double>({255.0, 0, 0}));
     }
-    else
-    {
-      surfel_cloud = vox_nav_utilities::set_cloud_color(
-          surfel_cloud, std::vector<double>({ 0.0, cost_params_.max_color_range - total_cost, total_cost }));
+    else {
+      surfel_cloud = vox_nav_map_server::set_cloud_color(
+        surfel_cloud, std::vector<double>({0.0, cost_params_.max_color_range - total_cost, total_cost}));
 
       pcl::PointSurfel elevated_surfel;
       elevated_surfel.x = surfel_center_point.x + cost_params_.node_elevation_distance * plane_model->values[0];
@@ -299,11 +309,9 @@ void MapManagerNoGPS::regressCosts()
 
       // inflate surfel as a cylinder by appending surfel cloud and their
       // up and down projections(by using surfel normal)
-      for (auto&& sp : surfel_cloud->points)
-      {
+      for (auto && sp : surfel_cloud->points) {
         double step_size = 0.02;
-        for (double step = 0.00; step < 0.00; step += step_size)
-        {
+        for (double step = 0.00; step < 0.00; step += step_size) {
           pcl::PointSurfel sp_down, sp_up;
           sp_down.x = sp.x + (cost_params_.node_elevation_distance + step) * plane_model->values[0];
           sp_down.y = sp.y + (cost_params_.node_elevation_distance + step) * plane_model->values[1];
@@ -331,22 +339,19 @@ void MapManagerNoGPS::regressCosts()
   elevated_surfel_pointcloud_ = pcl::make_shared<pcl::PointCloud<pcl::PointSurfel>>(elevated_surfels_cloud);
 
   // overlapping sufels duplicates some points , get rid of them by downsampling
-  if (preprocess_params_.pcd_map_downsample_voxel_size > 0.0)
-  {
+  if (preprocess_params_.pcd_map_downsample_voxel_size > 0.0) {
     elevated_surfel_pointcloud_ = vox_nav_utilities::downsampleInputCloud<pcl::PointSurfel>(
-        elevated_surfel_pointcloud_, preprocess_params_.pcd_map_downsample_voxel_size);
+      elevated_surfel_pointcloud_, preprocess_params_.pcd_map_downsample_voxel_size);
   }
 
   octomap::Pointcloud surfel_octocloud;
-  for (auto&& i : elevated_surfel_pointcloud_->points)
-  {
+  for (auto && i : elevated_surfel_pointcloud_->points) {
     surfel_octocloud.push_back(octomap::point3d(i.x, i.y, i.z));
   }
   auto elevated_surfels_octomap_octree = std::make_shared<octomap::OcTree>(octomap_voxel_size_);
   elevated_surfels_octomap_octree->insertPointCloud(surfel_octocloud, octomap::point3d(0, 0, 0));
 
-  for (auto&& i : elevated_surfel_pointcloud_->points)
-  {
+  for (auto && i : elevated_surfel_pointcloud_->points) {
     double cost_value = static_cast<double>(i.b / 255.0) - static_cast<double>(i.g / 255.0);
     elevated_surfels_octomap_octree->setNodeValue(i.x, i.y, i.z, std::max(0.0, cost_value));
   }
@@ -355,16 +360,14 @@ void MapManagerNoGPS::regressCosts()
   header->frame_id = map_frame_id_;
   header->stamp = this->now();
 
-  vox_nav_utilities::fillOctomapMarkers(elevated_surfel_octomap_markers_msg_, header, elevated_surfels_octomap_octree);
+  vox_nav_map_server::fillOctomapMarkers(elevated_surfel_octomap_markers_msg_, header, elevated_surfels_octomap_octree);
 
-  try
-  {
+  try {
     octomap_msgs::fullMapToMsg<octomap::OcTree>(*elevated_surfels_octomap_octree, *elevated_surfel_octomap_msg_);
     elevated_surfel_octomap_msg_->binary = false;
     elevated_surfel_octomap_msg_->resolution = octomap_voxel_size_;
   }
-  catch (const std::exception& e)
-  {
+  catch (const std::exception & e) {
     RCLCPP_ERROR(get_logger(), "Exception while converting binary octomap %s:", e.what());
   }
 
@@ -372,13 +375,12 @@ void MapManagerNoGPS::regressCosts()
   *pcd_map_pointcloud_ = cost_regressed_cloud;
 
   // overlapping sufels duplicates some points , get rid of them by downsampling
-  if (preprocess_params_.pcd_map_downsample_voxel_size > 0.0)
-  {
+  if (preprocess_params_.pcd_map_downsample_voxel_size > 0.0) {
     pcd_map_pointcloud_ = vox_nav_utilities::downsampleInputCloud<pcl::PointXYZRGB>(
-        pcd_map_pointcloud_, preprocess_params_.pcd_map_downsample_voxel_size);
+      pcd_map_pointcloud_, preprocess_params_.pcd_map_downsample_voxel_size);
   }
-  pure_traversable_pointcloud_ = vox_nav_utilities::get_traversable_points(pcd_map_pointcloud_);
-  pure_non_traversable_pointcloud_ = vox_nav_utilities::get_non_traversable_points(pcd_map_pointcloud_);
+  pure_traversable_pointcloud_ = vox_nav_map_server::get_traversable_points(pcd_map_pointcloud_);
+  pure_non_traversable_pointcloud_ = vox_nav_map_server::get_non_traversable_points(pcd_map_pointcloud_);
 }
 
 void MapManagerNoGPS::handleOriginalOctomap()
@@ -389,12 +391,10 @@ void MapManagerNoGPS::handleOriginalOctomap()
   pcl::toROSMsg(*pure_non_traversable_pointcloud_, *non_traversable_pointcloud_msg_);
 
   octomap::Pointcloud octocloud, collision_octocloud;
-  for (auto&& i : pcd_map_pointcloud_->points)
-  {
+  for (auto && i : pcd_map_pointcloud_->points) {
     octocloud.push_back(octomap::point3d(i.x, i.y, i.z));
   }
-  for (auto&& i : pure_non_traversable_pointcloud_->points)
-  {
+  for (auto && i : pure_non_traversable_pointcloud_->points) {
     collision_octocloud.push_back(octomap::point3d(i.x, i.y, i.z));
   }
   auto original_octomap_octree = std::make_shared<octomap::OcTree>(octomap_voxel_size_);
@@ -403,18 +403,15 @@ void MapManagerNoGPS::handleOriginalOctomap()
   original_octomap_octree->insertPointCloud(octocloud, octomap::point3d(0, 0, 0));
   collision_octomap_octree->insertPointCloud(collision_octocloud, octomap::point3d(0, 0, 0));
 
-  for (auto&& i : pcd_map_pointcloud_->points)
-  {
+  for (auto && i : pcd_map_pointcloud_->points) {
     double value = static_cast<double>(i.b / 255.0) - static_cast<double>(i.g / 255.0);
-    if (i.r == 255)
-    {
+    if (i.r == 255) {
       value = 2.0;
     }
     original_octomap_octree->setNodeValue(i.x, i.y, i.z, std::max(0.0, value));
   }
 
-  for (auto&& i : pure_non_traversable_pointcloud_->points)
-  {
+  for (auto && i : pure_non_traversable_pointcloud_->points) {
     double value = 2.0;
     collision_octomap_octree->setNodeValue(i.x, i.y, i.z, std::max(0.0, value));
   }
@@ -422,35 +419,30 @@ void MapManagerNoGPS::handleOriginalOctomap()
   auto header = std::make_shared<std_msgs::msg::Header>();
   header->frame_id = map_frame_id_;
   header->stamp = this->now();
-  vox_nav_utilities::fillOctomapMarkers(original_octomap_markers_msg_, header, original_octomap_octree);
+  vox_nav_map_server::fillOctomapMarkers(original_octomap_markers_msg_, header, original_octomap_octree);
 
-  try
-  {
+  try {
     octomap_msgs::fullMapToMsg<octomap::OcTree>(*original_octomap_octree, *original_octomap_msg_);
     original_octomap_msg_->binary = false;
     original_octomap_msg_->resolution = octomap_voxel_size_;
   }
-  catch (const std::exception& e)
-  {
+  catch (const std::exception & e) {
     RCLCPP_ERROR(get_logger(), "Exception while converting original binary octomap %s:", e.what());
   }
 
-  try
-  {
+  try {
     octomap_msgs::fullMapToMsg<octomap::OcTree>(*collision_octomap_octree, *collision_octomap_msg_);
     collision_octomap_msg_->binary = false;
     collision_octomap_msg_->resolution = octomap_voxel_size_;
   }
-  catch (const std::exception& e)
-  {
+  catch (const std::exception & e) {
     RCLCPP_ERROR(get_logger(), "Exception while converting collision binary octomap %s:", e.what());
   }
 }
 
 void MapManagerNoGPS::publishMapVisuals()
 {
-  if (publish_octomap_visuals_)
-  {
+  if (publish_octomap_visuals_) {
     octomap_pointcloud_msg_->header.frame_id = map_frame_id_;
     octomap_pointcloud_msg_->header.stamp = this->now();
     elevated_surfels_pointcloud_msg_->header.frame_id = map_frame_id_;
@@ -470,12 +462,11 @@ void MapManagerNoGPS::publishMapVisuals()
 }
 
 void MapManagerNoGPS::getGetTraversabilityMapCallback(
-    const std::shared_ptr<rmw_request_id_t> request_header,
-    const std::shared_ptr<vox_nav_msgs::srv::GetTraversabilityMap::Request> request,
-    std::shared_ptr<vox_nav_msgs::srv::GetTraversabilityMap::Response> response)
+  const std::shared_ptr<rmw_request_id_t> /*request_header*/,
+  const std::shared_ptr<vox_nav_msgs::srv::GetTraversabilityMap::Request> /*request*/,
+  std::shared_ptr<vox_nav_msgs::srv::GetTraversabilityMap::Response> response)
 {
-  if (!map_configured_)
-  {
+  if (!map_configured_) {
     RCLCPP_INFO(get_logger(), "Map has not been configured yet,  cannot handle GetTraversabilityMap request");
     response->is_valid = false;
     return;
@@ -491,14 +482,7 @@ void MapManagerNoGPS::getGetTraversabilityMapCallback(
 }
 }  // namespace vox_nav_map_server
 
-/**
- * @brief
- *
- * @param argc
- * @param argv
- * @return int
- */
-int main(int argc, char const* argv[])
+int main(int argc, char const * argv[])
 {
   rclcpp::init(argc, argv);
   auto map_manager_node = std::make_shared<vox_nav_map_server::MapManagerNoGPS>();

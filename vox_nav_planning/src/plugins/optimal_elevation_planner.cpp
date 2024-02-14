@@ -13,6 +13,13 @@
 // limitations under the License.
 
 #include "vox_nav_planning/plugins/optimal_elevation_planner.hpp"
+#include <vox_nav_utilities/tf_helpers.hpp>
+#include <vox_nav_utilities/planner_helpers.hpp>
+/*
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
+#include <vox_nav_utilities/pcl_helpers.hpp>
+*/
+
 #include <pluginlib/class_list_macros.hpp>
 #include <string>
 #include <memory>
@@ -220,7 +227,7 @@ namespace vox_nav_planning
 
     RCLCPP_INFO(logger_, "Extracting supervoxels!");
     super.extract(supervoxel_clusters_);
-    RCLCPP_INFO(logger_, "Found %d supervoxels", supervoxel_clusters_.size());
+    RCLCPP_INFO(logger_, "Found %ld supervoxels", supervoxel_clusters_.size());
     std::multimap<std::uint32_t, std::uint32_t> supervoxel_adjacency;
     super.getSupervoxelAdjacency(supervoxel_adjacency);
 
@@ -390,7 +397,7 @@ namespace vox_nav_planning
 
     RCLCPP_INFO(
       logger_,
-      "Constructed a Boost Graph from supervoxel clustering with %d vertices and %d edges",
+      "Constructed a Boost Graph from supervoxel clustering with %ld vertices and %ld edges",
       boost::num_vertices(g),
       boost::num_edges(g));
 
@@ -403,7 +410,7 @@ namespace vox_nav_planning
     goal_as_pcl_point.z = goal.pose.position.z;
 
     // Match requested start and goal poses with valid vertexes on Graph
-    vox_nav_utilities::vertex_descriptor start_vertex, goal_vertex;
+    vox_nav_utilities::vertex_descriptor start_vertex = 0, goal_vertex = 0;
 
     // Simple O(N) algorithm to find closest vertex to start and goal poses on boost::graph g
     double start_dist_min = INFINITY, goal_dist_min = INFINITY;
@@ -528,9 +535,9 @@ namespace vox_nav_planning
       for (std::size_t path_idx = 0; path_idx < solution_path->getStateCount(); path_idx++) {
         const auto * cstate =
           solution_path->getState(path_idx)->as<ompl::base::ElevationStateSpace::StateType>();
-        const auto * cstate_so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+        // const auto * cstate_so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
         const auto * cstate_xyzv = cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
-        double yaw = cstate_so2->value;
+        // double yaw = cstate_so2->value;
         double x = cstate_xyzv->values[0];
         double y = cstate_xyzv->values[1];
         double z = cstate_xyzv->values[2];
@@ -561,7 +568,7 @@ namespace vox_nav_planning
     RCLCPP_INFO(
       logger_, "A total of %d vertices were visited from a Boost Graph", num_visited_nodes);
     RCLCPP_INFO(
-      logger_, "Found path with %s search %d which includes poses,",
+      logger_, "Found path with %s search %ld which includes poses,",
       graph_search_method_.c_str(), plan_poses.size());
 
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -716,12 +723,12 @@ namespace vox_nav_planning
 
       RCLCPP_INFO(
         logger_,
-        "Recieved a valid Octomap with %d nodes, A FCL collision tree will be created from this "
+        "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
         "octomap for state validity (aka collision check)", original_octomap_octree_->size());
 
       RCLCPP_INFO(
         logger_,
-        "Recieved a valid Octomap which represents Elevated surfels with %d nodes,"
+        "Recieved a valid Octomap which represents Elevated surfels with %ld nodes,"
         " A FCL collision tree will be created from this "
         "octomap for state validity (aka collision check)",
         elevated_surfel_octomap_octree_->size());

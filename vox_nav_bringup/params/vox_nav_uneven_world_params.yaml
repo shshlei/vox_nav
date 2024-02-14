@@ -124,7 +124,7 @@ vox_nav_controller_server_rclcpp_node:
 vox_nav_map_server_rclcpp_node:
   ros__parameters:
     #pcd_map_filename: /home/atas/colcon_ws/src/Thorvald/thorvald_vox_nav/maps/container_office_map.pcd # Provide a PCD format map
-    pcd_map_filename: /home/atas/colcon_ws/src/vox_nav/vox_nav_bringup/maps/uneven_world.pcd # Provide a PCD format map
+    pcd_map_filename: /home/shshlei/navigation_ws/src/vox_nav/vox_nav_bringup/maps/uneven_world.pcd # Provide a PCD format map
 
     # PCD PREPROCESS PARAMS
     pcd_map_downsample_voxel_size: 0.10                                       # Set to smaller if you do not want downsample pointclouds of the map

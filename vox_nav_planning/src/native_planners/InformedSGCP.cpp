@@ -800,7 +800,7 @@ ompl::base::PlannerStatus ompl::control::InformedSGCP::solve(const base::Planner
         if (currentBestSolutionStatus_ != base::PlannerStatus::UNKNOWN)
         {
           // print number of vertex
-          OMPL_INFORM("%s: Best Control Graph has %d vertices and ", getName().c_str(),
+          OMPL_INFORM("%s: Best Control Graph has %ld vertices and ", getName().c_str(),
                       bestControlVertex[bestControlPathIndex_].size());
           // Reset control graphs anyways
           // clearControlGraphs(control_weightmaps, control_start_goal_descriptors);
@@ -848,12 +848,12 @@ ompl::base::PlannerStatus ompl::control::InformedSGCP::solve(const base::Planner
   if (params_.solve_control_graph_)
   {
     pdef_->addSolutionPath(bestControlPath_, approximate_solution, 0.0, getName());
-    OMPL_INFORM("%s: Best Control path has %d vertices and ", getName().c_str(), bestControlPath_->getStateCount());
+    OMPL_INFORM("%s: Best Control path has %ld vertices and ", getName().c_str(), bestControlPath_->getStateCount());
   }
   else
   {
     pdef_->addSolutionPath(bestGeometricPath_, approximate_solution, 0.0, getName());
-    OMPL_INFORM("%s: Best Geometric path has %d vertices and ", getName().c_str(), bestGeometricPath_->getStateCount());
+    OMPL_INFORM("%s: Best Geometric path has %ld vertices and ", getName().c_str(), bestGeometricPath_->getStateCount());
   }
 
   // clear data structures
@@ -868,7 +868,7 @@ void ompl::control::InformedSGCP::getPlannerData(base::PlannerData& data) const
   Planner::getPlannerData(data);
 }
 
-void ompl::control::InformedSGCP::generateBatchofSamples(int batch_size, bool use_valid_sampler,
+void ompl::control::InformedSGCP::generateBatchofSamples(std::size_t batch_size, bool use_valid_sampler,
                                                          std::vector<ompl::base::State*>& samples)
 {
   samples.reserve(batch_size);
@@ -1567,7 +1567,7 @@ void ompl::control::InformedSGCP::visualizeRGG(
   {
     // Paint the start and goal vertices differently.
     std_msgs::msg::ColorRGBA color_vd = color;
-    double is_goal_or_start{ 0.0 };
+    // double is_goal_or_start{ 0.0 };
     if (g[vd].id == start_vertex || g[vd].id == goal_vertex)
     {
       color_vd.b *= 0.5;
@@ -1584,7 +1584,7 @@ void ompl::control::InformedSGCP::visualizeRGG(
     else
     {
       const auto* target_cstate = g[vd].state->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* target_xyzv = target_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       point.x = target_xyzv->values[0];
       point.y = target_xyzv->values[1];
@@ -1634,14 +1634,14 @@ void ompl::control::InformedSGCP::visualizeRGG(
     else
     {
       const auto* source_cstate = g[u].state->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* source_xyzv = source_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       source_point.x = source_xyzv->values[0];
       source_point.y = source_xyzv->values[1];
       source_point.z = source_xyzv->values[2];
 
       const auto* target_cstate = g[v].state->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* target_xyzv = target_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       target_point.x = target_xyzv->values[0];
       target_point.y = target_xyzv->values[1];
@@ -1711,14 +1711,14 @@ void ompl::control::InformedSGCP::visualizePath(
     else
     {
       const auto* source_cstate = g[u].state->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* source_xyzv = source_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       source_point.x = source_xyzv->values[0];
       source_point.y = source_xyzv->values[1];
       source_point.z = source_xyzv->values[2];
 
       const auto* target_cstate = g[v].state->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* target_xyzv = target_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       target_point.x = target_xyzv->values[0];
       target_point.y = target_xyzv->values[1];
@@ -1807,14 +1807,14 @@ void ompl::control::InformedSGCP::visualizePath(
     else
     {
       const auto* source_cstate = u->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* source_xyzv = source_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       source_point.x = source_xyzv->values[0];
       source_point.y = source_xyzv->values[1];
       source_point.z = source_xyzv->values[2];
 
       const auto* target_cstate = v->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* target_xyzv = target_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       target_point.x = target_xyzv->values[0];
       target_point.y = target_xyzv->values[1];

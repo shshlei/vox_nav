@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "vox_nav_utilities/gps_waypoint_collector.hpp"
+
 #include <iostream>
 #include <memory>
-#include "vox_nav_utilities/gps_waypoint_collector.hpp"
 
 int main(int argc, char const * argv[])
 {

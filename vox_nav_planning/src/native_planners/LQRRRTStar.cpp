@@ -205,7 +205,7 @@ ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
       marker.color.g = 1.0;
       marker.color.b = 1.0;
       const auto * cstate = i->state_->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto * so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto * so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto * xyzv = cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       geometry_msgs::msg::Point node_point, parent_point;
       node_point.x = xyzv->values[0];
@@ -213,7 +213,7 @@ ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
       node_point.z = xyzv->values[2];
       const auto * parent_cstate =
         i->parent_->state_->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto * parent_so2 = parent_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto * parent_so2 = parent_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto * parent_xyzv = parent_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       parent_point.x = parent_xyzv->values[0];
       parent_point.y = parent_xyzv->values[1];
@@ -223,7 +223,7 @@ ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
       marker.colors.push_back(marker.color);
       for (auto && seg : i->path_) {
         const auto * cstate = seg->as<ompl::base::ElevationStateSpace::StateType>();
-        const auto * so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+        // const auto * so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
         const auto * xyzv = cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
         geometry_msgs::msg::Point seg_point;
         seg_point.x = xyzv->values[0];
@@ -307,7 +307,7 @@ void ompl::control::LQRRRTStar::getPlannerData(base::PlannerData & data) const
     }
   }
 
-  double delta = siC_->getPropagationStepSize();
+  // double delta = siC_->getPropagationStepSize();
 
   for (auto m : allNodes) {
     if (m->parent_) {

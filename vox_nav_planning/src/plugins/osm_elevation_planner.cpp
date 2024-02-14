@@ -13,6 +13,13 @@
 // limitations under the License.
 
 #include "vox_nav_planning/plugins/osm_elevation_planner.hpp"
+#include <vox_nav_utilities/tf_helpers.hpp>
+#include <vox_nav_utilities/planner_helpers.hpp>
+/*
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
+#include <vox_nav_utilities/pcl_helpers.hpp>
+*/
+
 #include <pluginlib/class_list_macros.hpp>
 
 #include <memory>
@@ -233,9 +240,9 @@ namespace vox_nav_planning
         logger_, "A solution was found, the simplified solution path includes %d poses.",
         static_cast<int>(solution_path.getStateCount()));
 
-      ompl::geometric::PathSimplifier * path_simlifier = new ompl::geometric::PathSimplifier(si);
-      //solution_path.interpolate(solution_path);
-      //path_simlifier->smoothBSpline(solution_path, 1, 0.1);
+      // ompl::geometric::PathSimplifier * path_simlifier = new ompl::geometric::PathSimplifier(si);
+      // solution_path.interpolate(solution_path);
+      // path_simlifier->smoothBSpline(solution_path, 1, 0.1);
 
       for (std::size_t path_idx = 0; path_idx < solution_path.getStateCount();
         path_idx++)
@@ -263,7 +270,7 @@ namespace vox_nav_planning
         plan_poses.push_back(pose);
       }
 
-      RCLCPP_INFO(logger_, "Found A plan with %i poses", plan_poses.size());
+      RCLCPP_INFO(logger_, "Found A plan with %ld poses", plan_poses.size());
       RCLCPP_INFO(logger_, "Path Length, %s, %.2f", planner_name_.c_str(), solution_path.length());
 
     } else {
@@ -274,7 +281,7 @@ namespace vox_nav_planning
     return plan_poses;
   }
 
-  bool OSMElevationPlanner::isStateValid(const ompl::base::State * state)
+  bool OSMElevationPlanner::isStateValid(const ompl::base::State * /*state*/)
   {
     return true;
   }
@@ -325,7 +332,7 @@ namespace vox_nav_planning
         }
 
         RCLCPP_INFO(
-          logger_, "Received a valid map with %i points",
+          logger_, "Received a valid map with %ld points",
           osm_road_topology_pcd_->points.size());
 
       } else {
@@ -356,7 +363,7 @@ namespace vox_nav_planning
   }
 
   ompl::base::ValidStateSamplerPtr OSMElevationPlanner::allocValidStateSampler(
-    const ompl::base::SpaceInformation * si)
+    const ompl::base::SpaceInformation * /*si*/)
   {
     auto valid_sampler = std::make_shared<ompl::base::OctoCellValidStateSampler>(
       control_simple_setup_->getSpaceInformation(),

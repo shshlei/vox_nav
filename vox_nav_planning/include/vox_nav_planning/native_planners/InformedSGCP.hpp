@@ -69,10 +69,10 @@ struct Parameters
   int num_threads_{ 4 };
 
   /** \brief The number of samples to be added to graph in each iteration. */
-  int batch_size_{ 100 };
+  std::size_t batch_size_{ 100 };
 
   /** \brief The a single vertex, do not construct more edges (neighbours) more than max_neighbors_. */
-  int max_neighbors_{ 15 };
+  std::size_t max_neighbors_{ 15 };
 
   /** \brief Adding almost identical samples does not help much, so we regulate this by min_dist_between_vertices_. */
   double min_dist_between_vertices_{ 0.1 };
@@ -355,7 +355,7 @@ private:
     {
     }
     template <class Graph>
-    void examine_vertex(Vertex u, Graph& g)
+    void examine_vertex(Vertex u, Graph& /*g*/)
     {
       // check whether examined vertex was goal, if yes throw
       ++(*numVisits_);
@@ -483,7 +483,7 @@ private:
    * \param use_valid_sampler if true, use valid state sampler, otherwise use uniform sampler
    * \param samples vector of states to be filled with generated samples
    */
-  void generateBatchofSamples(int batch_size, bool use_valid_sampler, std::vector<ompl::base::State*>& samples);
+  void generateBatchofSamples(std::size_t batch_size, bool use_valid_sampler, std::vector<ompl::base::State*>& samples);
 
   /** \brief Keep expanding geometric graph with generated samples, thread-safe.
    * This function is called by each thread in parallel to expand the geometric graphs.

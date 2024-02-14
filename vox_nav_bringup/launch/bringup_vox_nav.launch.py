@@ -11,19 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (DeclareLaunchArgument, GroupAction,
-                            IncludeLaunchDescription)
+from launch.actions import (DeclareLaunchArgument, GroupAction, IncludeLaunchDescription)
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import PushRosNamespace
 from launch.conditions import IfCondition
-import os
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
-
     share_dir = get_package_share_directory('vox_nav_bringup')
 
     params = LaunchConfiguration('params')
@@ -33,13 +32,13 @@ def generate_launch_description():
     use_rviz = LaunchConfiguration('use_rviz')
     rviz_config = LaunchConfiguration('rviz_config')
 
-    decleare_params = DeclareLaunchArgument(
+    declare_params = DeclareLaunchArgument(
         'params',
         default_value=os.path.join(
             share_dir, 'params', 'vox_nav_default_params.yaml'),
         description='Path to the vox_nav parameters file.')
 
-    decleare_localization_params = DeclareLaunchArgument(
+    declare_localization_params = DeclareLaunchArgument(
         'localization_params',
         default_value=os.path.join(
             share_dir, 'params', 'robot_localization_params.yaml'),
@@ -68,7 +67,6 @@ def generate_launch_description():
 
     # Specify the actions
     bringup_cmd_group = GroupAction([
-
         PushRosNamespace(
             condition=IfCondition(use_namespace),
             namespace=namespace),
@@ -82,8 +80,7 @@ def generate_launch_description():
         }.items()),
 
         IncludeLaunchDescription(PythonLaunchDescriptionSource(
-            os.path.join(share_dir, 'launch',
-                                 'rviz.launch.py')),
+            os.path.join(share_dir, 'launch', 'rviz.launch.py')),
                                  condition=IfCondition(use_rviz),
                                  launch_arguments={
             'use_namespace': use_namespace,
@@ -92,8 +89,8 @@ def generate_launch_description():
     ])
 
     return LaunchDescription([
-        decleare_params,
-        decleare_localization_params,
+        declare_params,
+        declare_localization_params,
         declare_use_rviz_cmd,
         declare_rviz_config,
         declare_namespace_cmd,

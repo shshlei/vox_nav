@@ -153,7 +153,7 @@ vox_nav_controller_server_rclcpp_node:
 
 vox_nav_map_server_rclcpp_node:
   ros__parameters:
-    pcd_map_filename: /home/atas/colcon_ws/src/Thorvald/thorvald_vox_nav/maps/container_office_map.pcd # Provide a PCD format map
+    pcd_map_filename: /home/shshlei/navigation_ws/src/Thorvald/thorvald_vox_nav/maps/container_office_map.pcd # Provide a PCD format map
     #pcd_map_filename: /home/atas/colcon_ws/src/Thorvald/thorvald_vox_nav/maps/strawberry_tunnnel_map.pcd # Provide a PCD format map
 
     # PCD PREPROCESS PARAMS

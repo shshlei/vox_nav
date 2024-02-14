@@ -13,6 +13,13 @@
 // limitations under the License.
 
 #include "vox_nav_planning/plugins/polytunnel_planner.hpp"
+#include <vox_nav_utilities/tf_helpers.hpp>
+#include <vox_nav_utilities/planner_helpers.hpp>
+/*
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
+#include <vox_nav_utilities/pcl_helpers.hpp>
+*/
+
 #include <pluginlib/class_list_macros.hpp>
 
 #include <string>
@@ -94,8 +101,8 @@ namespace vox_nav_planning
 
 
   std::vector<geometry_msgs::msg::PoseStamped> PolyTunnelPlanner::createPlan(
-    const geometry_msgs::msg::PoseStamped & start,
-    const geometry_msgs::msg::PoseStamped & goal)
+    const geometry_msgs::msg::PoseStamped & /*start*/,
+    const geometry_msgs::msg::PoseStamped & /*goal*/)
   {
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>());
@@ -105,7 +112,7 @@ namespace vox_nav_planning
       RCLCPP_ERROR(logger_, "No points selected from RVIZ");
       return std::vector<geometry_msgs::msg::PoseStamped>();
     }
-    RCLCPP_INFO(logger_, "Creating a plan with %d points", cloud->points.size());
+    RCLCPP_INFO(logger_, "Creating a plan with %ld points", cloud->points.size());
 
     //Get the side view image of the point cloud
     cv::Mat image = getCloudSideViewImage(cloud, resolution_);
@@ -152,7 +159,7 @@ namespace vox_nav_planning
       polytunnel_cloud_pub_, polytunnel_cloud_.header,
       clusters_organized);
 
-    RCLCPP_INFO(logger_, "Created a plan with %d pose", plan_poses.size());
+    RCLCPP_INFO(logger_, "Created a plan with %ld pose", plan_poses.size());
 
     return plan_poses;
   }

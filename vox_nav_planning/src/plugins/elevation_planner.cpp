@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "vox_nav_planning/plugins/elevation_planner.hpp"
+#include <vox_nav_utilities/tf_helpers.hpp>
+#include <vox_nav_utilities/planner_helpers.hpp>
+
 #include <pluginlib/class_list_macros.hpp>
 
 #include <memory>
@@ -238,7 +241,7 @@ namespace vox_nav_planning
         plan_poses.push_back(pose);
       }
 
-      RCLCPP_INFO(logger_, "Found A plan with %i poses", plan_poses.size());
+      RCLCPP_INFO(logger_, "Found A plan with %ld poses", plan_poses.size());
       RCLCPP_INFO(logger_, "Path Length, %s, %.2f", planner_name_.c_str(), solution_path.length());
       RCLCPP_INFO(
         logger_, "Path Smoothness, %s, %.2f",
@@ -373,7 +376,7 @@ namespace vox_nav_planning
 
       RCLCPP_INFO(
         logger_,
-        "Recieved a valid Octomap with %d nodes, A FCL collision tree "
+        "Recieved a valid Octomap with %ld nodes, A FCL collision tree "
         "will be created from this "
         "octomap for state validity (aka collision check)",
         original_octomap_octree_->size());
@@ -381,7 +384,7 @@ namespace vox_nav_planning
       RCLCPP_INFO(
         logger_,
         "Recieved a valid Octomap which represents Elevated surfels "
-        "with %d nodes,"
+        "with %ld nodes,"
         " A FCL collision tree will be created from this "
         "octomap for state validity (aka collision check)",
         elevated_surfel_octomap_octree_->size());
@@ -410,7 +413,7 @@ namespace vox_nav_planning
   }
 
   ompl::base::ValidStateSamplerPtr ElevationPlanner::allocValidStateSampler(
-    const ompl::base::SpaceInformation * si)
+    const ompl::base::SpaceInformation * /*si*/)
   {
     auto valid_sampler = std::make_shared<ompl::base::OctoCellValidStateSampler>(
       simple_setup_->getSpaceInformation(), nearest_elevated_surfel_to_start_,

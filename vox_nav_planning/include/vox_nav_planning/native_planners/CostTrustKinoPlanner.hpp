@@ -15,39 +15,43 @@
 #ifndef VOX_NAV_PLANNING__NATIVE_PLANNERS__COST_TRUST_KINO_PLANNER_HPP_
 #define VOX_NAV_PLANNING__NATIVE_PLANNERS__COST_TRUST_KINO_PLANNER_HPP_
 
+#include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/astar_search.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graphviz.hpp>
 #include <boost/graph/random.hpp>
 #include <boost/random.hpp>
-#include <boost/graph/graphviz.hpp>
-#include "ompl/control/DirectedControlSampler.h"
-#include "ompl/control/SimpleDirectedControlSampler.h"
-#include "ompl/control/spaces/RealVectorControlSpace.h"
-#include "ompl/control/SimpleSetup.h"
-#include "ompl/control/planners/PlannerIncludes.h"
-#include "ompl/base/spaces/RealVectorStateSpace.h"
-#include "ompl/base/goals/GoalSampleableRegion.h"
-#include "ompl/base/objectives/MinimaxObjective.h"
-#include "ompl/base/objectives/MaximizeMinClearanceObjective.h"
-#include "ompl/base/objectives/PathLengthOptimizationObjective.h"
-#include "ompl/tools/config/SelfConfig.h"
-#include "ompl/datastructures/NearestNeighbors.h"
-#include "ompl/datastructures/NearestNeighborsFLANN.h"
-#include "ompl/datastructures/LPAstarOnGraph.h"
-#include "ompl/base/samplers/informed/PathLengthDirectInfSampler.h"
-#include "ompl/base/samplers/informed/RejectionInfSampler.h"
-#include "ompl/util/GeometricEquations.h"
 
+#include <ompl/control/DirectedControlSampler.h>
+#include <ompl/control/SimpleDirectedControlSampler.h>
+#include <ompl/control/SimpleSetup.h>
+#include <ompl/control/planners/PlannerIncludes.h>
+#include <ompl/control/spaces/RealVectorControlSpace.h>
+
+// OMPL BASE
 #include "rclcpp/rclcpp.hpp"
-#include "visualization_msgs/msg/marker_array.hpp"
 #include "vox_nav_utilities/elevation_state_space.hpp"
 
-#include <thread>
-#include <mutex>
+#include "visualization_msgs/msg/marker_array.hpp"
+
+#include <ompl/base/goals/GoalSampleableRegion.h>
+#include <ompl/base/objectives/MaximizeMinClearanceObjective.h>
+#include <ompl/base/objectives/MinimaxObjective.h>
+#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+#include <ompl/base/samplers/informed/PathLengthDirectInfSampler.h>
+#include <ompl/base/samplers/informed/RejectionInfSampler.h>
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+#include <ompl/datastructures/LPAstarOnGraph.h>
+#include <ompl/datastructures/NearestNeighbors.h>
+#include <ompl/datastructures/NearestNeighborsFLANN.h>
+#include <ompl/tools/config/SelfConfig.h>
+#include <ompl/util/GeometricEquations.h>
+
 #include <atomic>
-#include <limits>
 #include <cstdint>
+#include <limits>
+#include <mutex>
+#include <thread>
 
 namespace ompl
 {
@@ -73,35 +77,35 @@ struct CostTrustParameters
   /** \brief All configurable parameters of CostTrustKinoPlanner. */
 
   /** \brief The number of threads to be used in parallel for geometric and control. No odd numbers and less than 2 */
-  int num_threads_{ 6 };
+  int num_threads_{6};
 
   /** \brief The minimum number of branches to be extended from one frontier node */
-  int min_number_of_branches_to_extend_{ 5 };
+  int min_number_of_branches_to_extend_{5};
 
   /** \brief The maximum number of branches to be extended from one frontier node */
-  int max_number_of_branches_to_extend_{ 10 };
+  int max_number_of_branches_to_extend_{10};
 
   /** \brief The maximum number of frontier nodes to be selected for extension */
-  int max_number_of_frontier_nodes_{ 25 };
+  std::size_t max_number_of_frontier_nodes_{25};
 
   /** \brief The minimum distance between nodes in the graph */
-  double min_distance_between_nodes_{ 0.1 };
+  double min_distance_between_nodes_{0.1};
 
   /** \brief The coefficient for determining score of best frontier node to be extended */
-  double k_prefer_nodes_with_low_branches_{ 1.0 };
+  double k_prefer_nodes_with_low_branches_{1.0};
 
   /** \brief The coefficient for determining score of best frontier node to be extended */
-  double k_prefer_nodes_with_high_cost_{ 5.0 };
+  double k_prefer_nodes_with_high_cost_{5.0};
 
   /** \brief The coefficient for determining score of best frontier node to be extended */
-  int num_of_neighbors_to_consider_for_density_{ 20 };
+  int num_of_neighbors_to_consider_for_density_{20};
 };
 
 class CostTrustKinoPlanner : public base::Planner
 {
 public:
   /** \brief Constructor */
-  CostTrustKinoPlanner(const SpaceInformationPtr& si);
+  CostTrustKinoPlanner(const SpaceInformationPtr & si);
 
   /** \brief Destructor */
   ~CostTrustKinoPlanner() override;
@@ -110,10 +114,10 @@ public:
   void setup() override;
 
   /** \brief Continue solving for some amount of time. Return true if solution was found. */
-  base::PlannerStatus solve(const base::PlannerTerminationCondition& ptc) override;
+  base::PlannerStatus solve(const base::PlannerTerminationCondition & ptc) override;
 
   /** \brief Get the internal data owned by planner, NOT IMPLEMENTED */
-  void getPlannerData(base::PlannerData& data) const override;
+  void getPlannerData(base::PlannerData & data) const override;
 
   /** \brief Clear datastructures. Call this function if the
       input data to the planner has changed and you do not
@@ -127,27 +131,27 @@ public:
    *  Some of the elements are not used in geometric graph (e.g., control, control_duration). */
   struct VertexProperty
   {
-    ompl::base::State* state{ nullptr };
-    ompl::control::Control* control{ nullptr };
-    ompl::base::Cost cost{ std::numeric_limits<double>::infinity() };
-    ompl::base::Cost cost_to_go{ std::numeric_limits<double>::infinity() };
-    unsigned int control_duration{ 0 };
-    bool blacklisted{ false };
-    bool is_root{ false };
-    bool belongs_to_solution{ false };
-    std::vector<VertexProperty*> branches;
-    VertexProperty* parent{ nullptr };
+    ompl::base::State * state{nullptr};
+    ompl::control::Control * control{nullptr};
+    ompl::base::Cost cost{std::numeric_limits<double>::infinity()};
+    ompl::base::Cost cost_to_go{std::numeric_limits<double>::infinity()};
+    unsigned int control_duration{0};
+    bool blacklisted{false};
+    bool is_root{false};
+    bool belongs_to_solution{false};
+    std::vector<VertexProperty *> branches;
+    VertexProperty * parent{nullptr};
   };
 
   /** \brief Compute distance between Vertexes (actually distance between contained states) */
-  double distanceFunction(const VertexProperty* a, const VertexProperty* b) const;
+  double distanceFunction(const VertexProperty * a, const VertexProperty * b) const;
 
   /** \brief Compute distance between states */
-  double distanceFunction(const base::State* a, const base::State* b) const;
+  double distanceFunction(const base::State * a, const base::State * b) const;
 
   /** \brief Given its vertex_descriptor (id),
    * return a const pointer to VertexProperty in control graph g_forward_control_  */
-  const VertexProperty* getVertexControls(std::size_t id, int thread_id);
+  const VertexProperty * getVertexControls(std::size_t id, int thread_id);
 
   void setNumThreads(int num_threads);
   int getNumThreads() const;
@@ -178,74 +182,74 @@ private:
   CostTrustParameters params_;
 
   /** \brief Control space information */
-  const SpaceInformation* siC_{ nullptr };
+  const SpaceInformation * siC_{nullptr};
 
   /** \brief The optimization objective. */
-  base::OptimizationObjectivePtr opt_{ nullptr };
+  base::OptimizationObjectivePtr opt_{nullptr};
 
   /** \brief Current cost of best path. The informed sampling strategy needs it. */
-  ompl::base::Cost bestControlCost_{ std::numeric_limits<double>::infinity() };
+  ompl::base::Cost bestControlCost_{std::numeric_limits<double>::infinity()};
 
   /** \brief keep the index of best control path, the index comes from thread id*/
-  int bestControlPathIndex_{ 0 };
+  int bestControlPathIndex_{0};
 
   /** \brief The best path found so far. */
-  std::shared_ptr<ompl::control::PathControl> bestControlPath_{ nullptr };
+  std::shared_ptr<ompl::control::PathControl> bestControlPath_{nullptr};
 
-  ControlSamplerPtr controlSampler_{ nullptr };
+  ControlSamplerPtr controlSampler_{nullptr};
 
   /** \brief The random number generator */
   RNG rng_;
 
   /** \brief The NN datastructure for control graph */
-  std::vector<std::shared_ptr<ompl::NearestNeighbors<VertexProperty*>>> nnControlsThreads_;
+  std::vector<std::shared_ptr<ompl::NearestNeighbors<VertexProperty *>>> nnControlsThreads_;
 
-  std::shared_ptr<ompl::NearestNeighbors<VertexProperty*>> bestControlPathNN_{ nullptr };
+  std::shared_ptr<ompl::NearestNeighbors<VertexProperty *>> bestControlPathNN_{nullptr};
 
-  std::vector<VertexProperty*> startVerticesControl_;
-  std::vector<VertexProperty*> goalVerticesControl_;
+  std::vector<VertexProperty *> startVerticesControl_;
+  std::vector<VertexProperty *> goalVerticesControl_;
 
-  void selectExplorativeFrontiers(int max_number,
-                                  std::shared_ptr<ompl::NearestNeighbors<VertexProperty*>>& nn_structure,
-                                  std::vector<VertexProperty*>& frontier_nodes);
+  void selectExplorativeFrontiers(std::size_t max_number,
+    std::shared_ptr<ompl::NearestNeighbors<VertexProperty *>> & nn_structure,
+    std::vector<VertexProperty *> & frontier_nodes);
 
-  void extendFrontiers(std::vector<VertexProperty*>& frontier_nodes, int num_branch_to_extend,
-                       std::shared_ptr<ompl::NearestNeighbors<VertexProperty*>>& nn_structure,
-                       const base::PlannerTerminationCondition& ptc, VertexProperty* target_vertex_property,
-                       std::shared_ptr<PathControl>& path, std::vector<VertexProperty*>& control_paths_vertices,
-                       const bool exact_solution_found, bool* should_stop_exploration,
-                       const std::shared_ptr<PathControl>& current_best_path);
-
-  /** \brief compute path cost by finding cost between
-   * consecutive vertices in the path
-   * \param vertex_path is the path
-   */
-  ompl::base::Cost computePathCost(std::shared_ptr<ompl::control::PathControl>& path) const;
+  void extendFrontiers(std::vector<VertexProperty *> & frontier_nodes, std::size_t num_branch_to_extend,
+    std::shared_ptr<ompl::NearestNeighbors<VertexProperty *>> & nn_structure,
+    const base::PlannerTerminationCondition & ptc, VertexProperty * target_vertex_property,
+    std::shared_ptr<PathControl> & path, std::vector<VertexProperty *> & control_paths_vertices,
+    const bool exact_solution_found, bool * should_stop_exploration,
+    const std::shared_ptr<PathControl> & current_best_path);
 
   /** \brief compute path cost by finding cost between
    * consecutive vertices in the path
    * \param vertex_path is the path
    */
-  ompl::base::Cost computePathCost(const std::shared_ptr<ompl::control::PathControl>& path) const;
+  ompl::base::Cost computePathCost(std::shared_ptr<ompl::control::PathControl> & path) const;
+
+  /** \brief compute path cost by finding cost between
+   * consecutive vertices in the path
+   * \param vertex_path is the path
+   */
+  ompl::base::Cost computePathCost(const std::shared_ptr<ompl::control::PathControl> & path) const;
 
   /** \brief Extract the states from the path and return them as a vector of const states
    * \param path is the ompl::control::PathControl from which the states are extracted
    */
-  std::vector<const ompl::base::State*> getConstStatesFromPath(const std::shared_ptr<ompl::control::PathControl>& path);
+  std::vector<const ompl::base::State *> getConstStatesFromPath(const std::shared_ptr<ompl::control::PathControl> & path);
 
   // RVIZ Visualization of planner progess, this will be removed in the future
 
   /** \brief static method to visulize a graph in RVIZ*/
-  static void visualizeRGG(const std::shared_ptr<ompl::NearestNeighbors<VertexProperty*>>& nn_structure,
-                           const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr& publisher,
-                           const std::string& ns, const std_msgs::msg::ColorRGBA& color, const int& state_space_type);
+  static void visualizeRGG(const std::shared_ptr<ompl::NearestNeighbors<VertexProperty *>> & nn_structure,
+    const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr & publisher,
+    const std::string & ns, const std_msgs::msg::ColorRGBA & color, const int & state_space_type);
 
-  static void visualizePath(const std::shared_ptr<PathControl>& path,
-                            const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr& publisher,
-                            const std::string& ns, const std_msgs::msg::ColorRGBA& color, const int& state_space_type);
+  static void visualizePath(const std::shared_ptr<PathControl> & path,
+    const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr & publisher,
+    const std::string & ns, const std_msgs::msg::ColorRGBA & color, const int & state_space_type);
 
   /** \brief get std_msgs::msg::ColorRGBA given the color name with a std::string*/
-  static std_msgs::msg::ColorRGBA getColor(std::string& color);
+  static std_msgs::msg::ColorRGBA getColor(std::string & color);
 
   /** \brief The publishers for the geometric and control graph/path visulization*/
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr rgg_graph_pub_;

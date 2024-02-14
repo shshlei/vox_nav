@@ -13,7 +13,31 @@
 // limitations under the License.
 
 #include "vox_nav_planning/plugins/se3_planner.hpp"
+#include <vox_nav_utilities/tf_helpers.hpp>
+#include <vox_nav_utilities/planner_helpers.hpp>
+/*
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
+#include <vox_nav_utilities/pcl_helpers.hpp>
+*/
+
 #include <pluginlib/class_list_macros.hpp>
+
+#include <octomap_msgs/msg/octomap.hpp>
+#include <octomap_msgs/conversions.h>
+
+#include <ompl/base/spaces/SE2StateSpace.h>
+#include <ompl/base/spaces/SE3StateSpace.h>
+
+#include <ompl/base/OptimizationObjective.h>
+#include <ompl/base/objectives/MaximizeMinClearanceObjective.h>
+#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+#include <ompl/base/objectives/StateCostIntegralObjective.h>
+#include <ompl/base/samplers/MaximizeClearanceValidStateSampler.h>
+#include <ompl/base/samplers/ObstacleBasedValidStateSampler.h>
+
+#include <fcl/math/constants.h>
+#include <fcl/geometry/octree/octree.h>
+#include <fcl/narrowphase/collision.h>
 
 #include <string>
 #include <memory>
@@ -145,7 +169,7 @@ std::vector<geometry_msgs::msg::PoseStamped> SE3Planner::createPlan(const geomet
       pose.pose.orientation.w = 1.0;
       plan_poses.push_back(pose);
     }
-    RCLCPP_INFO(logger_, "Found A plan with %i poses", plan_poses.size());
+    RCLCPP_INFO(logger_, "Found A plan with %ld poses", plan_poses.size());
   }
   else
   {
@@ -218,7 +242,7 @@ void SE3Planner::setupMap()
         std::make_shared<fcl::CollisionObjectf>(std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
 
     RCLCPP_INFO(logger_,
-                "Recieved a valid Octomap with %d nodes, A FCL collision tree will be created from this "
+                "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
                 "octomap for state validity (aka collision check)",
                 original_octomap_octree_->size());
 

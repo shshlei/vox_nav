@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
@@ -18,25 +20,21 @@ from launch.substitutions import LaunchConfiguration
 from launch.actions import GroupAction
 from launch.actions import DeclareLaunchArgument
 
-import os
-
 
 def generate_launch_description():
-
     share_dir = get_package_share_directory('vox_nav_bringup')
 
     params = LaunchConfiguration('params')
     localization_params = LaunchConfiguration('localization_params')
 
-    decleare_params = DeclareLaunchArgument(
+    declare_params = DeclareLaunchArgument(
         'params',
         default_value=os.path.join(share_dir, 'params', 'params.yaml'),
         description='Path to the vox_nav parameters file.')
 
-    decleare_localization_params = DeclareLaunchArgument(
+    declare_localization_params = DeclareLaunchArgument(
         'localization_params',
-        default_value=os.path.join(
-            share_dir, 'params', 'localization_params.yaml'),
+        default_value=os.path.join(share_dir, 'params', 'localization_params.yaml'),
         description='Path to the localization parameters file.')
 
     planner_server_node = Node(
@@ -124,8 +122,8 @@ def generate_launch_description():
                                              ('odometry/filtered', 'odometry/global')])
 
     return LaunchDescription([
-        decleare_params,
-        decleare_localization_params,
+        declare_params,
+        declare_localization_params,
         ekf_local_filter_node,
         ekf_global_filter_node,
         navsat_transform_node,

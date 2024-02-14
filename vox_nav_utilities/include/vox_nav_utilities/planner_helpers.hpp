@@ -14,64 +14,32 @@
 
 #ifndef VOX_NAV_UTILITIES__PLANNER_HELPERS_HPP_
 #define VOX_NAV_UTILITIES__PLANNER_HELPERS_HPP_
-#pragma once
 
-// OMPL BASE
-#include <ompl/base/samplers/ObstacleBasedValidStateSampler.h>
-#include <ompl/base/OptimizationObjective.h>
-#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
-#include <ompl/base/objectives/MaximizeMinClearanceObjective.h>
-#include <ompl/base/samplers/MaximizeClearanceValidStateSampler.h>
-#include <ompl/base/objectives/StateCostIntegralObjective.h>
-#include <ompl/base/spaces/SE2StateSpace.h>
-#include <ompl/base/spaces/DubinsStateSpace.h>
-#include <ompl/base/spaces/ReedsSheppStateSpace.h>
-#include <ompl/base/spaces/SE3StateSpace.h>
-// OMPL GEOMETRIC
-#include <ompl/geometric/planners/fmt/BFMT.h>
-#include <ompl/geometric/planners/rrt/RRTstar.h>
-#include <ompl/geometric/planners/rrt/RRTsharp.h>
-#include <ompl/geometric/planners/rrt/InformedRRTstar.h>
-#include <ompl/geometric/planners/rrt/LBTRRT.h>
-#include <ompl/geometric/planners/rrt/TRRT.h>
-#include <ompl/geometric/planners/sst/SST.h>
-#include <ompl/geometric/planners/fmt/FMT.h>
-#include <ompl/geometric/planners/prm/SPARS.h>
-#include <ompl/geometric/planners/prm/SPARStwo.h>
-#include <ompl/geometric/planners/prm/PRMstar.h>
-#include <ompl/geometric/planners/prm/LazyPRMstar.h>
-#include <ompl/geometric/planners/AnytimePathShortening.h>
-#include <ompl/geometric/planners/cforest/CForest.h>
-#include <ompl/geometric/planners/informedtrees/BITstar.h>
-#include <ompl/geometric/planners/informedtrees/ABITstar.h>
-#include <ompl/geometric/planners/informedtrees/AITstar.h>
-#include <ompl/geometric/SimpleSetup.h>
-#include <ompl/base/OptimizationObjective.h>
-// OCTOMAP
-#include <octomap_msgs/msg/octomap.hpp>
-#include <octomap_msgs/conversions.h>
-#include <octomap/octomap.h>
-#include <octomap/octomap_utils.h>
-// PCL
-#include <pcl/common/common.h>
-#include <pcl/common/pca.h>
-#include <pcl/common/transforms.h>
-#include <pcl/point_types.h>
 #include <rclcpp/rclcpp.hpp>
 
-#include <tf2_ros/buffer.h>
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <geometry_msgs/msg/pose_array.hpp>
-#include <geometry_msgs/msg/point.hpp>
 #include <nav_msgs/msg/path.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+
 #include <visualization_msgs/msg/marker_array.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include "vox_nav_utilities/tf_helpers.hpp"
-#include "vox_nav_utilities/pcl_helpers.hpp"
+// OMPL BASE
+#include <ompl/base/Planner.h>
+#include <ompl/base/SpaceInformation.h>
 
-#include <string>
+// OCTOMAP
+#include <octomap/octomap.h>
+
+// PCL
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/segmentation/supervoxel_clustering.h>
+
+#include <map>
+#include <vector>
 #include <memory>
+#include <string>
 
 namespace vox_nav_utilities
 {
@@ -83,123 +51,60 @@ namespace vox_nav_utilities
  * @param color_octomap_octree
  * @return geometry_msgs::msg::PoseStamped
  */
-  geometry_msgs::msg::PoseStamped getNearstNode(
-    const geometry_msgs::msg::PoseStamped & state,
-    const std::shared_ptr<octomap::OcTree> & nodes_octree);
+geometry_msgs::msg::PoseStamped getNearstNode(
+  const geometry_msgs::msg::PoseStamped & state,
+  const std::shared_ptr<octomap::OcTree> & nodes_octree);
+
+void initializeSelectedPlanner(
+  ompl::base::PlannerPtr & planner,
+  const std::string & selected_planner_name,
+  const ompl::base::SpaceInformationPtr & si,
+  const rclcpp::Logger & logger);
 
 /**
- * @brief
+ * @brief populate pcl surfel from geometry msgs Pose
  *
- * @param planner
- * @param selected_planner_name
- * @param si
- * @param logger
+ * @param pose
+ * @return pcl::PointSurfel
  */
-  void initializeSelectedPlanner(
-    ompl::base::PlannerPtr & planner,
-    const std::string & selected_planner_name,
-    const ompl::base::SpaceInformationPtr & si,
-    const rclcpp::Logger logger);
+pcl::PointSurfel poseMsg2PCLSurfel(const geometry_msgs::msg::PoseStamped & pose_stamped);
 
-  /**
-   * @brief populate pcl surfel from geometry msgs Pose
-   *
-   * @param pose
-   * @return pcl::PointSurfel
-   */
-  pcl::PointSurfel poseMsg2PCLSurfel(const geometry_msgs::msg::PoseStamped & pose_stamped);
+geometry_msgs::msg::PoseStamped PCLSurfel2PoseMsg(const pcl::PointSurfel & surfel);
 
-  /**
-   * @brief
-   *
-   * @param surfel
-   * @return geometry_msgs::msg::PoseStamped
-   */
-  geometry_msgs::msg::PoseStamped PCLSurfel2PoseMsg(const pcl::PointSurfel & surfel);
+void determineValidNearestGoalStart(
+  geometry_msgs::msg::PoseStamped & nearest_valid_start,
+  geometry_msgs::msg::PoseStamped & nearest_valid_goal,
+  const geometry_msgs::msg::PoseStamped & actual_start,
+  const geometry_msgs::msg::PoseStamped & actual_goal,
+  const pcl::PointCloud<pcl::PointSurfel>::Ptr & elevated_surfel_cloud);
 
-/**
- * @brief
- *
- * @param nearest_valid_start
- * @param nearest_valid_goal
- * @param actual_start
- * @param actual_goal
- * @param elevated_surfel_cloud
- */
-  void determineValidNearestGoalStart(
-    geometry_msgs::msg::PoseStamped & nearest_valid_start,
-    geometry_msgs::msg::PoseStamped & nearest_valid_goal,
-    const geometry_msgs::msg::PoseStamped & actual_start,
-    const geometry_msgs::msg::PoseStamped & actual_goal,
-    const pcl::PointCloud<pcl::PointSurfel>::Ptr & elevated_surfel_cloud
-  );
+void fillSurfelsfromMsgPoses(
+  const geometry_msgs::msg::PoseArray & poses,
+  pcl::PointCloud<pcl::PointSurfel>::Ptr & surfels);
 
-  /**
-   * @brief
-   *
-   * @param poses
-   * @param surfels
-   */
-  void fillSurfelsfromMsgPoses(
-    const geometry_msgs::msg::PoseArray & poses,
-    pcl::PointCloud<pcl::PointSurfel>::Ptr & surfels);
+void fillMsgPosesfromSurfels(
+  geometry_msgs::msg::PoseArray & poses,
+  const pcl::PointCloud<pcl::PointSurfel>::Ptr & surfels);
 
-  /**
-  * @brief
-  *
-  * @param poses
-  * @param surfels
-  */
-  void fillMsgPosesfromSurfels(
-    geometry_msgs::msg::PoseArray & poses,
-    const pcl::PointCloud<pcl::PointSurfel>::Ptr & surfels);
+void fillSuperVoxelMarkersfromAdjacency(
+  const std::map<std::uint32_t, pcl::Supervoxel<pcl::PointXYZRGBA>::Ptr> & supervoxel_clusters,
+  const std::multimap<std::uint32_t, std::uint32_t> & supervoxel_adjacency,
+  const std_msgs::msg::Header & header,
+  visualization_msgs::msg::MarkerArray & marker_array);
 
-  /**
-   * @brief
-   *
-   * @param supervoxel_adjacency
-   * @param header
-   * @param marker_array
-   */
-  void fillSuperVoxelMarkersfromAdjacency(
-    const std::map<std::uint32_t, pcl::Supervoxel<pcl::PointXYZRGBA>::Ptr> & supervoxel_clusters,
-    const std::multimap<std::uint32_t, std::uint32_t> & supervoxel_adjacency,
-    const std_msgs::msg::Header & header,
-    visualization_msgs::msg::MarkerArray & marker_array
-  );
+geometry_msgs::msg::PoseStamped getLinearInterpolatedPose(
+  const geometry_msgs::msg::PoseStamped a,
+  const geometry_msgs::msg::PoseStamped b);
 
-  /**
-   * @brief
-   *
-   * @param a
-   * @param b
-   * @return geometry_msgs::msg::PoseStamped
-   */
-  geometry_msgs::msg::PoseStamped getLinearInterpolatedPose(
-    const geometry_msgs::msg::PoseStamped a,
-    const geometry_msgs::msg::PoseStamped b
-  );
-
-  /**
-   * @brief Publish a plan as a nav_msgs::msg::Path and a visualization_msgs::msg::MarkerArray
-   *
-   * @param path
-   * @param start_pose
-   * @param goal_pose
-   * @param marker_scale
-   * @param plan_publisher
-   * @param nav_path_publisher
-   * @param robot_mesh_path
-   */
-  void publishPlan(
-    const std::vector<geometry_msgs::msg::PoseStamped> & path,
-    const geometry_msgs::msg::PoseStamped & start_pose,
-    const geometry_msgs::msg::PoseStamped & goal_pose,
-    const geometry_msgs::msg::Vector3 & marker_scale,
-    const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr & plan_publisher,
-    const rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr & nav_path_publisher,
-    const bool & publish_segment_ids = true,
-    const std::string & robot_mesh_path = "");
+void publishPlan(
+  const std::vector<geometry_msgs::msg::PoseStamped> & path,
+  const geometry_msgs::msg::PoseStamped & start_pose,
+  const geometry_msgs::msg::PoseStamped & goal_pose,
+  const geometry_msgs::msg::Vector3 & marker_scale,
+  const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr & plan_publisher,
+  const rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr & nav_path_publisher,
+  const bool & publish_segment_ids = true,
+  const std::string & robot_mesh_path = "");
 
 }  // namespace vox_nav_utilities
 

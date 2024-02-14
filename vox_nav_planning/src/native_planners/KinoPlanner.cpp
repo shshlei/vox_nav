@@ -194,7 +194,7 @@ ompl::base::PlannerStatus ompl::control::KinoPlanner::solve(const base::PlannerT
   // Keep the goal vertex out at the moment, we will check if it is connected to the graph later
 
   // inform with number of vertexes in nnControl
-  OMPL_INFORM("%s: Starting planning with %d vertexes in nnControl", getName().c_str(), nnControl_->size());
+  OMPL_INFORM("%s: Starting planning with %ld vertexes in nnControl", getName().c_str(), nnControl_->size());
 
   // initially we have no solution and no approximate solution
   bool exact_solution{ false };

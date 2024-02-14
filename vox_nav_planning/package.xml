@@ -6,9 +6,11 @@
     <description>TODO</description>
     <maintainer email="fetullah.atas@nmbu.no">Fetullah Atas</maintainer>
     <license>Apache-2.0</license>
-    <buildtool_depend>ament_cmake</buildtool_depend>
 
-    <depend>ament_cmake</depend>
+    <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
+    <depend>vox_nav_msgs</depend>
+    <depend>vox_nav_utilities</depend>
     <depend>rclcpp</depend>
     <depend>rclcpp_action</depend>
     <depend>rclcpp_lifecycle</depend>
@@ -22,8 +24,7 @@
     <depend>octomap</depend>
     <depend>octomap_msgs</depend>
     <depend>ompl</depend>
-    <depend>vox_nav_msgs</depend>
-    <depend>vox_nav_utilities</depend>
+    <depend>pluginlib</depend>
 
     <test_depend>ament_lint_common</test_depend>
     <test_depend>ament_lint_auto</test_depend>

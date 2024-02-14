@@ -25,7 +25,6 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-
     bringup_dir = get_package_share_directory('vox_nav_bringup')
     use_namespace = LaunchConfiguration('use_namespace')
     rviz_config_file = LaunchConfiguration('rviz_config')
@@ -37,8 +36,7 @@ def generate_launch_description():
 
     declare_rviz_config_file_cmd = DeclareLaunchArgument(
         'rviz_config',
-        default_value=os.path.join(bringup_dir, 'rviz',
-                                   'vox_nav_default_view.rviz'),
+        default_value=os.path.join(bringup_dir, 'rviz', 'vox_nav_default_view.rviz'),
         description='Full path to the RVIZ config file to use')
 
     rviz_node = Node(
@@ -47,11 +45,10 @@ def generate_launch_description():
         executable='rviz2',
         name='rviz2',
         arguments=['-d', rviz_config_file],
-        prefix=['xterm -e gdb -ex run --args'],
+        #prefix=['xterm -e gdb -ex run --args'],
         # change it to screen if you wanna see RVIZ output in terminal
         #output={'both': 'screen'},
         output='screen',
-
     )
 
     return LaunchDescription([

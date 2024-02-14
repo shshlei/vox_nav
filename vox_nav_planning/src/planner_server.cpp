@@ -15,6 +15,7 @@
 // limitations under the License.
 
 #include "vox_nav_planning/planner_server.hpp"
+#include <vox_nav_utilities/planner_helpers.hpp>
 
 using namespace std::chrono_literals;
 
@@ -111,7 +112,7 @@ namespace vox_nav_planning
 
   rclcpp_action::GoalResponse PlannerServer::handle_goal(
     const rclcpp_action::GoalUUID & uuid,
-    std::shared_ptr<const ComputePathToPose::Goal> goal)
+    std::shared_ptr<const ComputePathToPose::Goal> /*goal*/)
   {
     RCLCPP_INFO(
       this->get_logger(), "Received goal request in order to compute a path to pose");
@@ -177,7 +178,7 @@ namespace vox_nav_planning
 
     RCLCPP_DEBUG(
       get_logger(),
-      "Found valid path of size %u to (%.2f, %.2f)",
+      "Found valid path of size %ld to (%.2f, %.2f)",
       result->path.poses.size(), goal_pose.pose.position.x,
       goal_pose.pose.position.y);
 

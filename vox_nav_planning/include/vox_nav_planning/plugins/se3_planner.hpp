@@ -15,15 +15,21 @@
 #ifndef VOX_NAV_PLANNING__PLUGINS__SE2_PLANNER_HPP_
 #define VOX_NAV_PLANNING__PLUGINS__SE2_PLANNER_HPP_
 
-#include <vector>
-#include <string>
-#include <memory>
-
 #include "vox_nav_planning/planner_core.hpp"
-/**
- * @brief
- *
- */
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
+
+#include <fcl/narrowphase/collision_object.h>
+
+#include <ompl/base/State.h>
+#include <ompl/base/StateSpace.h>
+#include <ompl/base/spaces/RealVectorBounds.h>
+
+#include <octomap/octomap.h>
+
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace vox_nav_planning
 {
 
@@ -50,7 +56,7 @@ public:
    * @brief
    *
    */
-  void initialize(rclcpp::Node* parent, const std::string& plugin_name) override;
+  void initialize(rclcpp::Node * parent, const std::string & plugin_name) override;
 
   /**
    * @brief Method create the plan from a starting and ending goal.
@@ -59,8 +65,8 @@ public:
    * @param goal  The goal pose of the robot
    * @return std::vector<geometry_msgs::msg::PoseStamped>   The sequence of poses to get from start to goal, if any
    */
-  std::vector<geometry_msgs::msg::PoseStamped> createPlan(const geometry_msgs::msg::PoseStamped& start,
-                                                          const geometry_msgs::msg::PoseStamped& goal) override;
+  std::vector<geometry_msgs::msg::PoseStamped> createPlan(const geometry_msgs::msg::PoseStamped & start,
+    const geometry_msgs::msg::PoseStamped & goal) override;
 
   /**
    * @brief
@@ -69,7 +75,7 @@ public:
    * @return true
    * @return false
    */
-  bool isStateValid(const ompl::base::State* state) override;
+  bool isStateValid(const ompl::base::State * state) override;
 
   /**
    * @brief Get the Overlayed Start and Goal poses, only x and y are provided for goal ,
@@ -88,7 +94,7 @@ public:
 protected:
   rclcpp::Client<vox_nav_msgs::srv::GetTraversabilityMap>::SharedPtr get_traversability_map_client_;
 
-  rclcpp::Logger logger_{ rclcpp::get_logger("se3_planner") };
+  rclcpp::Logger logger_{rclcpp::get_logger("se3_planner")};
 
   geometry_msgs::msg::PoseStamped start_;
   geometry_msgs::msg::PoseStamped goal_;

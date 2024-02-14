@@ -385,8 +385,7 @@ ompl::base::PlannerStatus ompl::control::CostTrustKinoPlanner::solve(const base:
         std::vector<VertexProperty*> frontier_nodes;
         // Extend frontier nodes with random controls
         // Add random branch no in the range of min_number_of_branches_to_extend_ and max_number_of_branches_to_extend_
-        int random_branch_no =
-            rng_.uniformInt(params_.min_number_of_branches_to_extend_, params_.max_number_of_branches_to_extend_);
+        std::size_t random_branch_no = static_cast<std::size_t>(rng_.uniformInt(params_.min_number_of_branches_to_extend_, params_.max_number_of_branches_to_extend_));
         selectExplorativeFrontiers(params_.max_number_of_frontier_nodes_, control_nn, frontier_nodes);
         extendFrontiers(frontier_nodes, random_branch_no, control_nn, ptc, target_property, control_shortest_path,
                         this_control_path_vertices, exact_solution, should_stop_exploration, bestControlPath_);
@@ -463,7 +462,7 @@ ompl::base::PlannerStatus ompl::control::CostTrustKinoPlanner::solve(const base:
 
       // Choose the random state from the frist half of the best control path
       // This is to avoid the case where the random state is in the second half of the best control path
-      int random_state_index = rng_.uniformInt(0, bestControlPath_->getStateCount() / 2 - 1);
+      std::size_t random_state_index = static_cast<std::size_t>(rng_.uniformInt(0, bestControlPath_->getStateCount() / 2 - 1));
 
       for (int t = 0; t < params_.num_threads_; t++)
       {
@@ -496,13 +495,13 @@ ompl::base::PlannerStatus ompl::control::CostTrustKinoPlanner::solve(const base:
         if (random_state_index > solution_vertices.size() - 1)
         {
           OMPL_WARN("%s: Random state index is out of bounds, setting it to the last index", getName().c_str());
-          OMPL_WARN("%s: Random state index is %d but the solution vertices size is %d", getName().c_str(),
+          OMPL_WARN("%s: Random state index is %ld but the solution vertices size is %ld", getName().c_str(),
                     random_state_index, solution_vertices.size());
           random_state_index = solution_vertices.size() - 1;
         }
 
         // from start up to the random state index, add the vertices to the new NN structure and black list them
-        for (int i = 0; i < random_state_index; i++)
+        for (std::size_t i = 0; i < random_state_index; i++)
         {
           auto vertex = vertices[i];
           auto* new_vertex = new VertexProperty();
@@ -571,7 +570,7 @@ ompl::base::PlannerStatus ompl::control::CostTrustKinoPlanner::solve(const base:
   }
 
   // Add the best path to the solution path
-  OMPL_INFORM("%s: Best Control path has %d vertices and ", getName().c_str(), bestControlPath_->getStateCount());
+  OMPL_INFORM("%s: Best Control path has %ld vertices and ", getName().c_str(), bestControlPath_->getStateCount());
   pdef_->addSolutionPath(bestControlPath_, approximate_solution, 0.0, getName());
 
   // clear data structures
@@ -587,7 +586,7 @@ void ompl::control::CostTrustKinoPlanner::getPlannerData(base::PlannerData& data
 }
 
 void ompl::control::CostTrustKinoPlanner::selectExplorativeFrontiers(
-    int max_number, std::shared_ptr<ompl::NearestNeighbors<VertexProperty*>>& nn_structure,
+    std::size_t max_number, std::shared_ptr<ompl::NearestNeighbors<VertexProperty*>>& nn_structure,
     std::vector<VertexProperty*>& frontier_nodes)
 {
   nn_structure->list(frontier_nodes);
@@ -683,10 +682,10 @@ void ompl::control::CostTrustKinoPlanner::selectExplorativeFrontiers(
 }
 
 void ompl::control::CostTrustKinoPlanner::extendFrontiers(
-    std::vector<VertexProperty*>& frontier_nodes, int num_branch_to_extend,
+    std::vector<VertexProperty*>& frontier_nodes, std::size_t num_branch_to_extend,
     std::shared_ptr<ompl::NearestNeighbors<VertexProperty*>>& nn_structure,
     const base::PlannerTerminationCondition& ptc, VertexProperty* target_property, std::shared_ptr<PathControl>& path,
-    std::vector<VertexProperty*>& control_paths_vertices, const bool exact_solution_found,
+    std::vector<VertexProperty*>& control_paths_vertices, const bool /*exact_solution_found*/,
     bool* should_stop_exploration, const std::shared_ptr<PathControl>& current_best_path)
 {
   // If all the new branches ended up with higher cost than the current best path, then we should stop exploration
@@ -699,7 +698,7 @@ void ompl::control::CostTrustKinoPlanner::extendFrontiers(
   for (auto&& frontier_node : frontier_nodes)
   {
     // Add max number of branches to the frontier nodes
-    for (size_t i = 0; i < num_branch_to_extend; i++)
+    for (std::size_t i = 0; i < num_branch_to_extend; i++)
     {
       // Check if the planner has been terminated
       if (ptc == true)
@@ -712,7 +711,7 @@ void ompl::control::CostTrustKinoPlanner::extendFrontiers(
       // allocate a new state
       auto* new_state = si_->allocState();
 
-      int control_duration = 0;
+      std::size_t control_duration = 0;
 
       controlSampler_->sampleNext(control, frontier_node->control);
       control_duration = rng_.uniformInt(siC_->getMinControlDuration(), siC_->getMaxControlDuration());
@@ -910,8 +909,8 @@ void ompl::control::CostTrustKinoPlanner::visualizeRGG(
   for (auto vd : vertices)
   {
     // Paint the start and goal vertices differently.
-    std_msgs::msg::ColorRGBA color_vd = color;
-    double is_goal_or_start{ 0.0 };
+    // std_msgs::msg::ColorRGBA color_vd = color;
+    // double is_goal_or_start{ 0.0 };
 
     geometry_msgs::msg::Point point;
     if (state_space_type == base::STATE_SPACE_REAL_VECTOR)
@@ -924,7 +923,7 @@ void ompl::control::CostTrustKinoPlanner::visualizeRGG(
     else
     {
       const auto* target_cstate = vd->state->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* target_xyzv = target_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       point.x = target_xyzv->values[0];
       point.y = target_xyzv->values[1];
@@ -953,14 +952,14 @@ void ompl::control::CostTrustKinoPlanner::visualizeRGG(
       else
       {
         const auto* source_cstate = vd->state->as<ompl::base::ElevationStateSpace::StateType>();
-        const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+        // const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
         const auto* source_xyzv = source_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
         source_point.x = source_xyzv->values[0];
         source_point.y = source_xyzv->values[1];
         source_point.z = source_xyzv->values[2];
 
         const auto* target_cstate = b->state->as<ompl::base::ElevationStateSpace::StateType>();
-        const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+        // const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
         const auto* target_xyzv = target_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
         target_point.x = target_xyzv->values[0];
         target_point.y = target_xyzv->values[1];
@@ -1034,14 +1033,14 @@ void ompl::control::CostTrustKinoPlanner::visualizePath(
     else
     {
       const auto* source_cstate = u->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* source_so2 = source_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* source_xyzv = source_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       source_point.x = source_xyzv->values[0];
       source_point.y = source_xyzv->values[1];
       source_point.z = source_xyzv->values[2];
 
       const auto* target_cstate = v->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* target_so2 = target_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* target_xyzv = target_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       target_point.x = target_xyzv->values[0];
       target_point.y = target_xyzv->values[1];

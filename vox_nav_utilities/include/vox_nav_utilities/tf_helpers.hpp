@@ -15,12 +15,20 @@
 #ifndef VOX_NAV_UTILITIES__TF_HELPERS_HPP_
 #define VOX_NAV_UTILITIES__TF_HELPERS_HPP_
 
-#include <string>
+#include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
+#include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+
 #include <memory>
-#include "rclcpp/rclcpp.hpp"
-#include "tf2_ros/buffer.h"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include <string>
+#include <vector>
+#include <limits>
 
 namespace vox_nav_utilities
 {
@@ -34,9 +42,9 @@ namespace vox_nav_utilities
  * @param out_pose Place to store the resulting transformed pose
  * @return True if successful transform
  */
-bool transformPose(const std::shared_ptr<tf2_ros::Buffer> tf, const std::string frame,
-                   const geometry_msgs::msg::PoseStamped& in_pose, geometry_msgs::msg::PoseStamped& out_pose,
-                   rclcpp::Duration& transform_tolerance);
+bool transformPose(const std::shared_ptr<tf2_ros::Buffer> & tf, const std::string & frame,
+  const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose,
+  rclcpp::Duration & transform_tolerance);
 
 /**
  * @brief Get the Current Pose object
@@ -49,9 +57,9 @@ bool transformPose(const std::shared_ptr<tf2_ros::Buffer> tf, const std::string 
  * @return true
  * @return false
  */
-bool getCurrentPose(geometry_msgs::msg::PoseStamped& global_pose, tf2_ros::Buffer& tf_buffer,
-                    const std::string global_frame = "map", const std::string robot_frame = "base_link",
-                    const double transform_timeout = 0.1);
+bool getCurrentPose(geometry_msgs::msg::PoseStamped & global_pose, tf2_ros::Buffer & tf_buffer,
+  const std::string & global_frame = "map", const std::string & robot_frame = "base_link",
+  const double transform_timeout = 0.1);
 
 /**
  * @brief Get the Euclidian Dist Between Poses object
@@ -60,7 +68,7 @@ bool getCurrentPose(geometry_msgs::msg::PoseStamped& global_pose, tf2_ros::Buffe
  * @param b
  * @return double
  */
-double getEuclidianDistBetweenPoses(const geometry_msgs::msg::PoseStamped a, const geometry_msgs::msg::PoseStamped b);
+double getEuclidianDistBetweenPoses(const geometry_msgs::msg::PoseStamped & a, const geometry_msgs::msg::PoseStamped & b);
 
 /**
  * @brief Get the Euclidian Dist Between Poses object
@@ -69,7 +77,7 @@ double getEuclidianDistBetweenPoses(const geometry_msgs::msg::PoseStamped a, con
  * @param b
  * @return double
  */
-double getEuclidianDistBetweenPoses(const geometry_msgs::msg::Pose a, const geometry_msgs::msg::Pose b);
+double getEuclidianDistBetweenPoses(const geometry_msgs::msg::Pose & a, const geometry_msgs::msg::Pose & b);
 
 /**
  * @brief Get the Euclidian Dist Between Poses object
@@ -78,7 +86,7 @@ double getEuclidianDistBetweenPoses(const geometry_msgs::msg::Pose a, const geom
  * @param b
  * @return double
  */
-double getEuclidianDistBetweenPoints(const geometry_msgs::msg::Point a, const geometry_msgs::msg::Point b);
+double getEuclidianDistBetweenPoints(const geometry_msgs::msg::Point & a, const geometry_msgs::msg::Point & b);
 
 /**
  * @brief Provide tf2::Quaternion and get roll pitch yaw
@@ -88,7 +96,7 @@ double getEuclidianDistBetweenPoints(const geometry_msgs::msg::Point a, const ge
  * @param pitch
  * @param yaw
  */
-void getRPYfromTFQuaternion(const tf2::Quaternion q, double& roll, double& pitch, double& yaw);
+void getRPYfromTFQuaternion(const tf2::Quaternion & q, double & roll, double & pitch, double & yaw);
 
 /**
  * @brief Get the Quaternionfrom R P Y object
@@ -108,7 +116,7 @@ tf2::Quaternion getTFQuaternionfromRPY(const double roll, const double pitch, co
  * @param pitch
  * @param yaw
  */
-void getRPYfromMsgQuaternion(const geometry_msgs::msg::Quaternion q_msg, double& roll, double& pitch, double& yaw);
+void getRPYfromMsgQuaternion(const geometry_msgs::msg::Quaternion & q_msg, double & roll, double & pitch, double & yaw);
 
 /**
  * @brief Get the Msg Quaternionfrom R P Y object
@@ -123,12 +131,12 @@ geometry_msgs::msg::Quaternion getMsgQuaternionfromRPY(const double roll, const 
 const double EPSILON = std::numeric_limits<double>::epsilon();
 
 std::tuple<int, int, int> convert_to_rgb(double minval, double maxval, double val,
-                                         const std::vector<std::tuple<int, int, int>>& colors);
+  const std::vector<std::tuple<int, int, int>> & colors);
 
-double euclidean_distance(const std::tuple<int, int, int>& c1, const std::tuple<int, int, int>& c2);
+double euclidean_distance(const std::tuple<int, int, int> & c1, const std::tuple<int, int, int> & c2);
 
-double convert_to_value(const std::tuple<int, int, int>& rgb, double minval, double maxval,
-                        const std::vector<std::tuple<int, int, int>>& colors);
+double convert_to_value(const std::tuple<int, int, int> & rgb, double minval, double maxval,
+  const std::vector<std::tuple<int, int, int>> & colors);
 
 }  // namespace vox_nav_utilities
 

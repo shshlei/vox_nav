@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "vox_nav_utilities/elevation_state_space.hpp"
+
+// OMPL BASE
+#include <ompl/base/Cost.h>
+#include <ompl/base/SpaceInformation.h>
+
 #include "ompl/tools/config/MagicConstants.h"
 using namespace ompl::base;
 
@@ -26,7 +30,7 @@ OctoCostOptimizationObjective::OctoCostOptimizationObjective(
   description_ = "OctoCost Objective";
   RCLCPP_INFO(
     logger_,
-    "OctoCost Optimization objective bases on an Octomap with %d nodes",
+    "OctoCost Optimization objective bases on an Octomap with %ld nodes",
     elevated_surfels_octree_->size());
 }
 
@@ -37,7 +41,7 @@ OctoCostOptimizationObjective::~OctoCostOptimizationObjective()
 ompl::base::Cost OctoCostOptimizationObjective::stateCost(const ompl::base::State * s) const
 {
   float cost = 5.0;
-  const auto * s_so2 = s->as<ElevationStateSpace::StateType>()->as<SO2StateSpace::StateType>(0);
+  //const auto * s_so2 = s->as<ElevationStateSpace::StateType>()->as<SO2StateSpace::StateType>(0);
   const auto * s_xyzv =
     s->as<ElevationStateSpace::StateType>()->as<RealVectorStateSpace::StateType>(1);
   auto node_at_samppled_state = elevated_surfels_octree_->search(
@@ -58,23 +62,23 @@ ompl::base::Cost OctoCostOptimizationObjective::motionCost(const State * s1, con
 }
 
 ElevationStateSpace::ElevationStateSpace(
-  const SE2StateType state_type,
+  const SE2StateType & state_type,
   double turningRadius, bool isSymmetric)
-:  rho_(turningRadius),
-  isSymmetric_(isSymmetric),
-  se2_state_type_(state_type)
+: se2_state_type_(state_type),
+  rho_(turningRadius),
+  isSymmetric_(isSymmetric)
 {
   setName("ElevationStateSpace" + getName());
   registerDefaultProjection(std::make_shared<ElevationStateSpaceProjection>(this));
   registerProjection(
     "ElevationStateSpaceProjection", std::make_shared<ElevationStateSpaceProjection>(this));
 
-  type_ = STATE_SPACE_SE3; // Well, not exactly, but this is the closest, Infromed sampling requirement
+  type_ = STATE_SPACE_SE3;  // Well, not exactly, but this is the closest, Infromed sampling requirement
   addSubspace(std::make_shared<SO2StateSpace>(), 1.0);
-  addSubspace(std::make_shared<RealVectorStateSpace>(4), 1.0); // x, y, z, v(linear speed)
+  addSubspace(std::make_shared<RealVectorStateSpace>(4), 1.0);  // x, y, z, v(linear speed)
   lock();
 
-  real_vector_ = std::make_shared<ompl::base::RealVectorStateSpace>(4); // x,y,z, v(linear speed)
+  real_vector_ = std::make_shared<ompl::base::RealVectorStateSpace>(4);  // x,y,z, v(linear speed)
   se2_ = std::make_shared<ompl::base::SE2StateSpace>();
   dubins_ = std::make_shared<ompl::base::DubinsStateSpace>(rho_, isSymmetric_);
   reeds_sheep_ = std::make_shared<ompl::base::ReedsSheppStateSpace>(rho_);
@@ -85,7 +89,6 @@ ElevationStateSpace::ElevationStateSpace(
   interpolation_state1_se2_ = se2_->allocState();
   interpolation_state2_se2_ = se2_->allocState();
   interpolated_state_se2_ = se2_->allocState();
-
 }
 
 void ElevationStateSpace::setBounds(
@@ -93,7 +96,6 @@ void ElevationStateSpace::setBounds(
   const RealVectorBounds & z_bounds,
   const RealVectorBounds & v_bounds)
 {
-
   auto xyzv_bounds = std::make_shared<ompl::base::RealVectorBounds>(4);
   xyzv_bounds->setLow(0, se2_bounds.low[0]);    // x-
   xyzv_bounds->setHigh(0, se2_bounds.high[0]);  // x+
@@ -118,7 +120,6 @@ void ElevationStateSpace::enforceBounds(State * state) const
 
   real_vector_->enforceBounds(xyzv);
 }
-
 
 const RealVectorBounds ElevationStateSpace::getBounds() const
 {
@@ -150,7 +151,6 @@ void ElevationStateSpace::freeState(State * state) const
 
 double ompl::base::ElevationStateSpace::distance(const State * state1, const State * state2) const
 {
-
   const auto * state1_so2 = state1->as<StateType>()->as<SO2StateSpace::StateType>(0);
   const auto * state1_xyzv = state1->as<StateType>()->as<RealVectorStateSpace::StateType>(1);
 
@@ -172,15 +172,16 @@ double ompl::base::ElevationStateSpace::distance(const State * state1, const Sta
       std::pow(state1_xyzv->values[0] - state2_xyzv->values[0], 2) +
       std::pow(state1_xyzv->values[1] - state2_xyzv->values[1], 2) +
       std::pow(state1_xyzv->values[2] - state2_xyzv->values[2], 2));
-
-  } else if (se2_state_type_ == SE2StateType::DUBINS) {
+  }
+  else if (se2_state_type_ == SE2StateType::DUBINS) {
     if (isSymmetric_) {
       return rho_ * std::min(
-        dubins_->dubins(state1_se2_, state2_se2_).length(),
-        dubins_->dubins(state2_se2_, state1_se2_).length());
+                      dubins_->dubins(state1_se2_, state2_se2_).length(),
+                      dubins_->dubins(state2_se2_, state1_se2_).length());
     }
     return rho_ * dubins_->dubins(state1_se2_, state2_se2_).length();
-  } else {
+  }
+  else {
     return rho_ * reeds_sheep_->reedsShepp(state1_se2_, state2_se2_).length();
   }
   return 0;
@@ -213,11 +214,13 @@ void ompl::base::ElevationStateSpace::interpolate(
     se2_->interpolate(
       interpolation_state1_se2_, interpolation_state2_se2_, t,
       interpolated_state_se2_);
-  } else if (se2_state_type_ == SE2StateType::DUBINS) {
+  }
+  else if (se2_state_type_ == SE2StateType::DUBINS) {
     dubins_->interpolate(
       interpolation_state1_se2_, interpolation_state2_se2_, t,
       interpolated_state_se2_);
-  } else {
+  }
+  else {
     reeds_sheep_->interpolate(
       interpolation_state1_se2_, interpolation_state2_se2_, t,
       interpolated_state_se2_);
@@ -226,8 +229,8 @@ void ompl::base::ElevationStateSpace::interpolate(
   interpolated_so2->value = interpolated_state_se2_->as<SE2StateSpace::StateType>()->getYaw();     // so2
   interpolated_xyzv->values[0] = interpolated_state_se2_->as<SE2StateSpace::StateType>()->getX();  // x
   interpolated_xyzv->values[1] = interpolated_state_se2_->as<SE2StateSpace::StateType>()->getY();  // y
-  interpolated_xyzv->values[2] = (from_xyzv->values[2] + to_xyzv->values[2]) / 2.0;         // z
-  interpolated_xyzv->values[3] = (from_xyzv->values[3] + to_xyzv->values[3]) / 2.0;         // v
+  interpolated_xyzv->values[2] = (from_xyzv->values[2] + to_xyzv->values[2]) / 2.0;                // z
+  interpolated_xyzv->values[3] = (from_xyzv->values[3] + to_xyzv->values[3]) / 2.0;                // v
 
   /*pcl::PointSurfel dubins_surfel, nearest_intermediate_surfel;
   dubins_surfel.x = state_dubins->getX();
@@ -241,7 +244,6 @@ void ompl::base::ElevationStateSpace::interpolate(
     dubins_surfel,
     workspace_surfels_);
   state_z->values[0] = nearest_intermediate_surfel.z;*/
-
 }
 
 void ompl::base::ElevationStateSpace::printState(const State * state, std::ostream & out) const
@@ -252,11 +254,10 @@ void ompl::base::ElevationStateSpace::printState(const State * state, std::ostre
   real_vector_->printState(xyzv, out);
 }
 
-
 OctoCellValidStateSampler::OctoCellValidStateSampler(
   const ompl::base::SpaceInformationPtr & si,
-  const geometry_msgs::msg::PoseStamped start,
-  const geometry_msgs::msg::PoseStamped goal,
+  const geometry_msgs::msg::PoseStamped & start,
+  const geometry_msgs::msg::PoseStamped & goal,
   const geometry_msgs::msg::PoseArray::SharedPtr & elevated_surfels_poses)
 : ValidStateSampler(si.get()),
   elevated_surfels_poses_(*elevated_surfels_poses),
@@ -269,7 +270,7 @@ OctoCellValidStateSampler::OctoCellValidStateSampler(
 
   name_ = "OctoCellValidStateSampler";
   RCLCPP_INFO(
-    logger_, "OctoCellValidStateSampler bases on an Octomap with %d surfels",
+    logger_, "OctoCellValidStateSampler bases on an Octomap with %ld surfels",
     workspace_surfels_->points.size());
 
   updateSearchArea(start, goal);
@@ -291,7 +292,7 @@ bool OctoCellValidStateSampler::sampleNear(
 {
   auto * cstate = state->as<ompl::base::ElevationStateSpace::StateType>();
   auto * near_cstate = near->as<ompl::base::ElevationStateSpace::StateType>();
-  const auto * so2 = near_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+  //const auto * so2 = near_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
   const auto * xyzv = near_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
 
   pcl::PointSurfel surfel;
@@ -313,8 +314,8 @@ bool OctoCellValidStateSampler::sampleNear(
 }
 
 void OctoCellValidStateSampler::updateSearchArea(
-  const geometry_msgs::msg::PoseStamped start,
-  const geometry_msgs::msg::PoseStamped goal)
+  const geometry_msgs::msg::PoseStamped & start,
+  const geometry_msgs::msg::PoseStamped & goal)
 {
   RCLCPP_INFO(logger_, "Updating search area");
 
@@ -324,21 +325,21 @@ void OctoCellValidStateSampler::updateSearchArea(
 
   search_area_surfels_ =
     vox_nav_utilities::getSubCloudWithinRadius<pcl::PointSurfel>(
-    workspace_surfels_, search_point_surfel,
-    radius);
+      workspace_surfels_, search_point_surfel,
+      radius);
 
-  RCLCPP_INFO(logger_, "Updated search area surfels, %d", search_area_surfels_->points.size());
+  RCLCPP_INFO(logger_, "Updated search area surfels, %ld", search_area_surfels_->points.size());
 
   /*search_area_surfels_ = vox_nav_utilities::uniformlySampleCloud<pcl::PointSurfel>(
     search_area_surfels_, 1.2);*/
 
   RCLCPP_INFO(
-    logger_, "Uniformly sampled %d search area surfels,", search_area_surfels_->points.size());
+    logger_, "Uniformly sampled %ld search area surfels,", search_area_surfels_->points.size());
 
   std::vector<int> weights;
   for (auto && i : search_area_surfels_->points) {
-    //auto tilt_angle = std::max(std::abs(i.normal_x), std::abs(i.normal_y)) * 180.0 / M_PI;
-    //weights.push_back(200 / tilt_angle);
+    // auto tilt_angle = std::max(std::abs(i.normal_x), std::abs(i.normal_y)) * 180.0 / M_PI;
+    // weights.push_back(200 / tilt_angle);
     weights.push_back(1);
   }
   std::discrete_distribution<> distrubutions(weights.begin(), weights.end());
@@ -347,5 +348,4 @@ void OctoCellValidStateSampler::updateSearchArea(
   int_distr_ = std::make_shared<std::uniform_int_distribution<int>>(
     0,
     search_area_surfels_->points.size() - 1);
-
 }

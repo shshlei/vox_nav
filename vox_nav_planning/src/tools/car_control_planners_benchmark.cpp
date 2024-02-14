@@ -238,7 +238,7 @@ std::map<int, ompl::control::PathControl> CarControlPlannersBenchMarking::doBenc
 
     // spin until a valid random start and goal poses are found. Also
     // make sure that a soluion exists for generated states
-    double start_yaw, goal_yaw, nan;
+    double start_yaw = 0.0, goal_yaw = 0.0, nan = 0.0;
 
     start_yaw = getRangedRandom(se_bounds_.minyaw, se_bounds_.maxyaw);
     goal_yaw = getRangedRandom(se_bounds_.minyaw, se_bounds_.maxyaw);
@@ -393,7 +393,7 @@ void CarControlPlannersBenchMarking::publishSamplePlans(std::map<int, ompl::cont
     for (std::size_t curr_path_state = 0; curr_path_state < it->second.getStateCount(); curr_path_state++)
     {
       const auto* cstate = it->second.getState(curr_path_state)->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto* so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+      // const auto* so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
       const auto* xyzv = cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       geometry_msgs::msg::Point p;
       p.x = xyzv->values[0];
@@ -450,7 +450,7 @@ void CarControlPlannersBenchMarking::setupMap()
     }
 
     RCLCPP_INFO(logger_,
-                "Recieved a valid Octomap with %d nodes, A FCL collision tree will be created from this "
+                "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
                 "octomap for state validity (aka collision check)",
                 original_octomap_octree_->size());
 
@@ -525,12 +525,12 @@ void CarControlPlannersBenchMarking::setupMap()
       }
 
       RCLCPP_INFO(logger_,
-                  "Recieved a valid Octomap with %d nodes, A FCL collision tree will be created from this "
+                  "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
                   "octomap for state validity (aka collision check)",
                   original_octomap_octree_->size());
 
       RCLCPP_INFO(logger_,
-                  "Recieved a valid Octomap which represents Elevated surfels with %d nodes,"
+                  "Recieved a valid Octomap which represents Elevated surfels with %ld nodes,"
                   " A FCL collision tree will be created from this "
                   "octomap for state validity (aka collision check)",
                   elevated_surfel_octomap_octree_->size());
@@ -538,8 +538,7 @@ void CarControlPlannersBenchMarking::setupMap()
   }
 }
 
-ompl::base::ValidStateSamplerPtr
-CarControlPlannersBenchMarking::allocValidStateSampler(const ompl::base::SpaceInformation* si)
+ompl::base::ValidStateSamplerPtr CarControlPlannersBenchMarking::allocValidStateSampler(const ompl::base::SpaceInformation* /*si*/)
 {
   auto valid_sampler = std::make_shared<ompl::base::OctoCellValidStateSampler>(
       control_simple_setup_->getSpaceInformation(), nearest_elevated_surfel_to_start_, nearest_elevated_surfel_to_goal_,

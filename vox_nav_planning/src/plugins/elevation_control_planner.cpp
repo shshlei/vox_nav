@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "vox_nav_planning/plugins/elevation_control_planner.hpp"
+#include <vox_nav_utilities/tf_helpers.hpp>
+#include <vox_nav_utilities/planner_helpers.hpp>
+
 #include <pluginlib/class_list_macros.hpp>
 
 #include <string>
@@ -282,12 +285,11 @@ namespace vox_nav_planning
       }
 
       RCLCPP_INFO(
-        logger_, "A solution was found, the simplified solution path includes %d poses.",
-        static_cast<int>(solution_path.getStateCount()));
+        logger_, "A solution was found, the simplified solution path includes %ld poses.", solution_path.getStateCount());
 
-      ompl::geometric::PathSimplifier * path_simlifier = new ompl::geometric::PathSimplifier(si);
-      //solution_path.interpolate(solution_path);
-      //path_simlifier->smoothBSpline(solution_path, 1, 0.1);
+      // ompl::geometric::PathSimplifier * path_simlifier = new ompl::geometric::PathSimplifier(si);
+      // solution_path.interpolate(solution_path);
+      // path_simlifier->smoothBSpline(solution_path, 1, 0.1);
 
       for (std::size_t path_idx = 0; path_idx < solution_path.getStateCount(); path_idx++) {
         const auto * cstate =
@@ -314,7 +316,7 @@ namespace vox_nav_planning
       }
 
       RCLCPP_INFO(
-        logger_, "Found A plan with %i poses", plan_poses.size());
+        logger_, "Found A plan with %ld poses", plan_poses.size());
     } else {
       RCLCPP_WARN(
         logger_, "No solution for requested path planning !");
@@ -445,12 +447,12 @@ namespace vox_nav_planning
 
       RCLCPP_INFO(
         logger_,
-        "Recieved a valid Octomap with %d nodes, A FCL collision tree will be created from this "
+        "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
         "octomap for state validity (aka collision check)", original_octomap_octree_->size());
 
       RCLCPP_INFO(
         logger_,
-        "Recieved a valid Octomap which represents Elevated surfels with %d nodes,"
+        "Recieved a valid Octomap which represents Elevated surfels with %ld nodes,"
         " A FCL collision tree will be created from this "
         "octomap for state validity (aka collision check)",
         elevated_surfel_octomap_octree_->size());
@@ -459,7 +461,7 @@ namespace vox_nav_planning
   }
 
   ompl::base::ValidStateSamplerPtr ElevationControlPlanner::allocValidStateSampler(
-    const ompl::base::SpaceInformation * si)
+    const ompl::base::SpaceInformation * /*si*/)
   {
     auto valid_sampler = std::make_shared<ompl::base::OctoCellValidStateSampler>(
       control_simple_setup_->getSpaceInformation(),

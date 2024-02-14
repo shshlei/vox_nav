@@ -326,7 +326,7 @@ std::map<int, ompl::control::PathControl> QuadrotorControlPlannersBenchMarking::
 
     // spin until a valid random start and goal poses are found. Also
     // make sure that a soluion exists for generated states
-    double start_yaw, goal_yaw, nan;
+    double start_yaw = 0.0, goal_yaw = 0.0, nan = 0.0;
 
     start_yaw = getRangedRandom(state_bounds_.yaw.first, state_bounds_.yaw.second);
     goal_yaw = getRangedRandom(state_bounds_.yaw.first, state_bounds_.yaw.second);
@@ -570,7 +570,7 @@ void QuadrotorControlPlannersBenchMarking::setupMap()
     }
 
     RCLCPP_INFO(logger_,
-                "Recieved a valid Octomap with %d nodes, A FCL collision tree will be created from this "
+                "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
                 "octomap for state validity (aka collision check)",
                 original_octomap_octree_->size());
 
@@ -621,7 +621,7 @@ void QuadrotorControlPlannersBenchMarking::setupMap()
           std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
 
       RCLCPP_INFO(logger_,
-                  "Recieved a valid Octomap with %d nodes, A FCL collision tree will be created from this "
+                  "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
                   "octomap for state validity (aka collision check)",
                   original_octomap_octree_->size());
     }
