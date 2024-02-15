@@ -28,7 +28,7 @@ def generate_launch_description():
 
     declare_params = DeclareLaunchArgument(
         'params',
-        default_value=os.path.join(share_dir, 'params', 'params.yaml'),
+        default_value=os.path.join(share_dir, 'params', 'planner_params.yaml'),
         description='Path to the vox_nav parameters file.')
 
     planner_server_node = Node(

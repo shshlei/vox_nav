@@ -4,7 +4,8 @@ BasedOnStyle: Google
 
 AccessModifierOffset: -2
 AlignAfterOpenBracket: DontAlign 
-AllowShortFunctionsOnASingleLine: InlineOnly
+# AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortFunctionsOnASingleLine: Empty 
 BraceWrapping:
   # case 语句后面
   AfterCaseLabel: true

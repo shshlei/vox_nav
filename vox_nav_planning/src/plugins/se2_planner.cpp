@@ -15,24 +15,16 @@
 #include "vox_nav_planning/plugins/se2_planner.hpp"
 #include <vox_nav_utilities/tf_helpers.hpp>
 #include <vox_nav_utilities/planner_helpers.hpp>
-/*
-#include <vox_nav_utilities/pcl_helpers.hpp>
-*/
 
 #include <pluginlib/class_list_macros.hpp>
 
-#include <octomap_msgs/msg/octomap.hpp>
-#include <octomap_msgs/conversions.h>
-
+#include <ompl/base/spaces/SE2StateSpace.h>
 #include <ompl/base/spaces/DubinsStateSpace.h>
 #include <ompl/base/spaces/ReedsSheppStateSpace.h>
-#include <ompl/base/spaces/SE2StateSpace.h>
-#include <ompl/base/OptimizationObjective.h>
-#include <ompl/base/objectives/MaximizeMinClearanceObjective.h>
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
-#include <ompl/base/objectives/StateCostIntegralObjective.h>
-#include <ompl/base/samplers/MaximizeClearanceValidStateSampler.h>
-#include <ompl/base/samplers/ObstacleBasedValidStateSampler.h>
+
+#include <octomap_msgs/msg/octomap.hpp>
+#include <octomap_msgs/conversions.h>
 
 #include <fcl/math/constants.h>
 #include <fcl/geometry/octree/octree.h>
@@ -44,18 +36,7 @@
 
 namespace vox_nav_planning
 {
-
-  SE2Planner::SE2Planner()
-  {
-  }
-
-  SE2Planner::~SE2Planner()
-  {
-  }
-
-  void SE2Planner::initialize(
-    rclcpp::Node * parent,
-    const std::string & plugin_name)
+  void SE2Planner::initialize(rclcpp::Node * parent, const std::string & plugin_name)
   {
     is_map_ready_ = false;
     se2_bounds_ = std::make_shared<ompl::base::RealVectorBounds>(2);
@@ -80,18 +61,12 @@ namespace vox_nav_planning
     parent->get_parameter(plugin_name + ".rho", rho_);
     parent->get_parameter(plugin_name + ".z_elevation", z_elevation_);
 
-    se2_bounds_->setLow(
-      0, parent->get_parameter(plugin_name + ".state_space_boundries.minx").as_double());
-    se2_bounds_->setHigh(
-      0, parent->get_parameter(plugin_name + ".state_space_boundries.maxx").as_double());
-    se2_bounds_->setLow(
-      1, parent->get_parameter(plugin_name + ".state_space_boundries.miny").as_double());
-    se2_bounds_->setHigh(
-      1, parent->get_parameter(plugin_name + ".state_space_boundries.maxy").as_double());
-    se2_bounds_->setLow(
-      2, parent->get_parameter(plugin_name + ".state_space_boundries.minyaw").as_double());
-    se2_bounds_->setHigh(
-      2, parent->get_parameter(plugin_name + ".state_space_boundries.maxyaw").as_double());
+    se2_bounds_->setLow(0, parent->get_parameter(plugin_name + ".state_space_boundries.minx").as_double());
+    se2_bounds_->setHigh(0, parent->get_parameter(plugin_name + ".state_space_boundries.maxx").as_double());
+    se2_bounds_->setLow(1, parent->get_parameter(plugin_name + ".state_space_boundries.miny").as_double());
+    se2_bounds_->setHigh(1, parent->get_parameter(plugin_name + ".state_space_boundries.maxy").as_double());
+    se2_bounds_->setLow(2, parent->get_parameter(plugin_name + ".state_space_boundries.minyaw").as_double());
+    se2_bounds_->setHigh(2, parent->get_parameter(plugin_name + ".state_space_boundries.maxyaw").as_double());
 
     if (selected_se2_space_name_ == "SE2") {
       state_space_ = std::make_shared<ompl::base::SE2StateSpace>();
@@ -115,13 +90,9 @@ namespace vox_nav_planning
     original_octomap_octree_ = std::make_shared<octomap::OcTree>(octomap_voxel_size_);
 
     // service hooks for robot localization fromll service
-    get_map_client_node_ = std::make_shared
-      <rclcpp::Node>("get_traversability_map_client_node");
+    get_map_client_node_ = std::make_shared<rclcpp::Node>("get_traversability_map_client_node");
 
-    get_traversability_map_client_ =
-      get_map_client_node_->create_client
-      <vox_nav_msgs::srv::GetTraversabilityMap>(
-      "get_traversability_map");
+    get_traversability_map_client_ = get_map_client_node_->create_client<vox_nav_msgs::srv::GetTraversabilityMap>("get_traversability_map");
 
     RCLCPP_INFO(logger_, "Selected planner is: %s", planner_name_.c_str());
 
@@ -133,15 +104,11 @@ namespace vox_nav_planning
     const geometry_msgs::msg::PoseStamped & goal)
   {
     if (!is_map_ready_) {
-      RCLCPP_WARN(
-        logger_, "A valid Octomap has not been receievd yet, Try later again."
-      );
+      RCLCPP_WARN(logger_, "A valid Octomap has not been receievd yet, Try later again.");
       return std::vector<geometry_msgs::msg::PoseStamped>();
     }
 
-    ompl::base::ScopedState<ompl::base::SE2StateSpace>
-    se2_start(state_space_),
-    se2_goal(state_space_);
+    ompl::base::ScopedState<ompl::base::SE2StateSpace> se2_start(state_space_), se2_goal(state_space_);
     // set the start and goal states
     double start_yaw, goal_yaw, nan;
     vox_nav_utilities::getRPYfromMsgQuaternion(start.pose.orientation, nan, nan, start_yaw);
@@ -168,11 +135,7 @@ namespace vox_nav_planning
 
     // create a planner for the defined space
     ompl::base::PlannerPtr planner;
-    vox_nav_utilities::initializeSelectedPlanner(
-      planner,
-      planner_name_,
-      simple_setup_->getSpaceInformation(),
-      logger_);
+    vox_nav_utilities::initializeSelectedPlanner(planner, planner_name_, simple_setup_->getSpaceInformation(), logger_);
 
     simple_setup_->setPlanner(planner);
     simple_setup_->setup();
@@ -187,8 +150,7 @@ namespace vox_nav_planning
 
       ompl::geometric::PathGeometric solution_path = simple_setup_->getSolutionPath();
       // Path smoothing using bspline
-      ompl::geometric::PathSimplifier * path_simlifier =
-        new ompl::geometric::PathSimplifier(simple_setup_->getSpaceInformation());
+      ompl::geometric::PathSimplifier * path_simlifier = new ompl::geometric::PathSimplifier(simple_setup_->getSpaceInformation());
 
       path_simlifier->smoothBSpline(solution_path, 3);
       solution_path.interpolate(interpolation_parameter_);
@@ -213,11 +175,9 @@ namespace vox_nav_planning
         pose.pose.orientation.w = this_pose_quat.getW();
         plan_poses.push_back(pose);
       }
-      RCLCPP_INFO(
-        logger_, "Found A plan with %ld poses", plan_poses.size());
+      RCLCPP_INFO(logger_, "Found A plan with %ld poses", plan_poses.size());
     } else {
-      RCLCPP_WARN(
-        logger_, "No solution for requested path planning !");
+      RCLCPP_WARN(logger_, "No solution for requested path planning !");
     }
     return plan_poses;
   }
@@ -225,20 +185,16 @@ namespace vox_nav_planning
   bool SE2Planner::isStateValid(const ompl::base::State * state)
   {
     // cast the abstract state type to the type we expect
-    const ompl::base::SE2StateSpace::StateType * se2_state =
-      state->as<ompl::base::SE2StateSpace::StateType>();
+    const ompl::base::SE2StateSpace::StateType * se2_state = state->as<ompl::base::SE2StateSpace::StateType>();
     // check validity of state Fdefined by pos & rot
     fcl::Vector3f translation(se2_state->getX(), se2_state->getY(), z_elevation_);
     tf2::Quaternion myQuaternion;
     myQuaternion.setRPY(0, 0, se2_state->getYaw());
-    fcl::Quaternionf rotation(myQuaternion.getX(), myQuaternion.getY(),
-      myQuaternion.getZ(), myQuaternion.getW());
+    fcl::Quaternionf rotation(myQuaternion.getX(), myQuaternion.getY(), myQuaternion.getZ(), myQuaternion.getW());
     robot_collision_object_->setTransform(rotation, translation);
     fcl::CollisionRequestf requestType(1, false, 1, false);
     fcl::CollisionResultf collisionResult;
-    fcl::collide<float>(
-      robot_collision_object_.get(),
-      original_octomap_collision_object_.get(), requestType, collisionResult);
+    fcl::collide<float>(robot_collision_object_.get(), original_octomap_collision_object_.get(), requestType, collisionResult);
     return !collisionResult.isCollision();
   }
 
@@ -252,21 +208,14 @@ namespace vox_nav_planning
 
       while (!get_traversability_map_client_->wait_for_service(std::chrono::seconds(1))) {
         if (!rclcpp::ok()) {
-          RCLCPP_ERROR(
-            logger_,
-            "Interrupted while waiting for the get_traversability_map service. Exiting");
+          RCLCPP_ERROR(logger_, "Interrupted while waiting for the get_traversability_map service. Exiting");
           return;
         }
-        RCLCPP_INFO(
-          logger_,
-          "get_traversability_map service not available, waiting and trying again");
+        RCLCPP_INFO(logger_, "get_traversability_map service not available, waiting and trying again");
       }
 
       auto result_future = get_traversability_map_client_->async_send_request(request);
-      if (rclcpp::spin_until_future_complete(
-          get_map_client_node_,
-          result_future) !=
-        rclcpp::FutureReturnCode::SUCCESS)
+      if (rclcpp::spin_until_future_complete(get_map_client_node_, result_future) != rclcpp::FutureReturnCode::SUCCESS)
       {
         RCLCPP_ERROR(logger_, "/get_traversability_map service call failed");
       }
@@ -276,28 +225,22 @@ namespace vox_nav_planning
         is_map_ready_ = true;
       } else {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        RCLCPP_INFO(
-          logger_, "Waiting for GetTraversabilityMap service to provide correct maps.");
+        RCLCPP_INFO(logger_, "Waiting for GetTraversabilityMap service to provide correct maps.");
         continue;
       }
 
-      auto original_octomap_octree =
-        dynamic_cast<octomap::OcTree *>(octomap_msgs::fullMsgToMap(response->original_octomap));
+      auto original_octomap_octree = dynamic_cast<octomap::OcTree *>(octomap_msgs::fullMsgToMap(response->original_octomap));
       original_octomap_octree_ = std::make_shared<octomap::OcTree>(*original_octomap_octree);
-
       delete original_octomap_octree;
 
       auto original_octomap_fcl_octree = std::make_shared<fcl::OcTreef>(original_octomap_octree_);
-      original_octomap_collision_object_ = std::make_shared<fcl::CollisionObjectf>(
-        std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
+      original_octomap_collision_object_ = std::make_shared<fcl::CollisionObjectf>(std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
 
-      RCLCPP_INFO(
-        logger_,
+      RCLCPP_INFO(logger_,
         "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
         "octomap for state validity (aka collision check)", original_octomap_octree_->size());
 
-      simple_setup_->setStateValidityChecker(
-        std::bind(&SE2Planner::isStateValid, this, std::placeholders::_1));
+      simple_setup_->setStateValidityChecker(std::bind(&SE2Planner::isStateValid, this, std::placeholders::_1));
     }
   }
 
@@ -312,6 +255,4 @@ namespace vox_nav_planning
   }
 }  // namespace vox_nav_planning
 
-PLUGINLIB_EXPORT_CLASS(
-  vox_nav_planning::SE2Planner,
-  vox_nav_planning::PlannerCore)
+PLUGINLIB_EXPORT_CLASS(vox_nav_planning::SE2Planner, vox_nav_planning::PlannerCore)

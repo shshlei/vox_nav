@@ -15,55 +15,34 @@
 #ifndef VOX_NAV_PLANNING__RRT__KINOPLANNER_HPP_
 #define VOX_NAV_PLANNING__RRT__KINOPLANNER_HPP_
 
-#include "ompl/base/goals/GoalSampleableRegion.h"
-#include "ompl/base/objectives/MaximizeMinClearanceObjective.h"
-#include "ompl/base/objectives/MinimaxObjective.h"
-#include "ompl/base/objectives/PathLengthOptimizationObjective.h"
-#include "ompl/base/samplers/informed/PathLengthDirectInfSampler.h"
-#include "ompl/base/samplers/informed/RejectionInfSampler.h"
-#include "ompl/base/spaces/RealVectorStateSpace.h"
-#include "ompl/control/DirectedControlSampler.h"
-#include "ompl/control/SimpleDirectedControlSampler.h"
-#include "ompl/control/SimpleSetup.h"
-#include "ompl/control/planners/PlannerIncludes.h"
-#include "ompl/control/spaces/RealVectorControlSpace.h"
-#include "ompl/datastructures/LPAstarOnGraph.h"
-#include "ompl/datastructures/NearestNeighbors.h"
-#include "ompl/tools/config/SelfConfig.h"
-#include "ompl/util/GeometricEquations.h"
-#include "rclcpp/rclcpp.hpp"
-#include "vox_nav_utilities/elevation_state_space.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
-#include <Eigen/Dense>
+// OMPL BASE
+#include <ompl/base/State.h>
+#include <ompl/base/Planner.h>
+#include <ompl/base/PlannerData.h>
+#include <ompl/base/PlannerStatus.h>
+#include <ompl/base/PlannerTerminationCondition.h>
+#include <ompl/base/OptimizationObjective.h>
 
-#include "visualization_msgs/msg/marker_array.hpp"
+// OMPL CONTROL 
+#include <ompl/control/Control.h>
+#include <ompl/control/ControlSampler.h>
+#include <ompl/control/PathControl.h>
 
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/astar_search.hpp>
-#include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/graph/graphviz.hpp>
-#include <boost/graph/random.hpp>
-#include <boost/random.hpp>
+// OMPL DATASTUCTURE
+#include <ompl/datastructures/NearestNeighbors.h>
 
-#include <atomic>
-#include <cstdint>
+#include <list>
+#include <string>
+#include <memory>
 #include <limits>
-#include <mutex>
-#include <thread>
 
 namespace ompl
 {
 namespace control
 {
-/**
-   @anchor cKinoPlanner
-   @par Short description
-   \ref Informed Simultaneous Geometric and Control Planner (KinoPlanner).
-   The implementation is based on boost graph library.
-   An accompanying paper explaining novelities of this planner will be published soon.
-   @par External documentation
-   TBD
-*/
 struct Parameters
 {
   /** \brief All configurable parameters of KinoPlanner. */
@@ -72,7 +51,7 @@ struct Parameters
   int batch_size_{100};
 };
 
-class KinoPlanner : public base::Planner
+class KinoPlanner : public ompl::base::Planner
 {
 public:
   /** \brief Constructor */
@@ -85,15 +64,17 @@ public:
   void setup() override;
 
   /** \brief Continue solving for some amount of time. Return true if solution was found. */
-  base::PlannerStatus solve(const base::PlannerTerminationCondition & ptc) override;
+  ompl::base::PlannerStatus solve(const ompl::base::PlannerTerminationCondition & ptc) override;
 
   /** \brief Get the internal data owned by planner, NOT IMPLEMENTED */
-  void getPlannerData(base::PlannerData & data) const override;
+  void getPlannerData(ompl::base::PlannerData & data) const override;
 
   /** \brief Clear datastructures. Call this function if the
       input data to the planner has changed and you do not
       want to continue planning */
   void clear() override;
+
+protected:
 
   /** \brief Free the memory allocated by this planner. That is mostly in nearest neihbours. */
   void freeMemory();
@@ -116,9 +97,10 @@ public:
   double distanceFunction(const VertexProperty * a, const VertexProperty * b) const;
 
   /** \brief Compute distance between states */
-  double distanceFunction(const base::State * a, const base::State * b) const;
+  double distanceFunction(const ompl::base::State * a, const ompl::base::State * b) const;
 
   void setBatchSize(int batch_size);
+
   int getBatchSize() const;
 
 private:
@@ -136,10 +118,10 @@ private:
   const SpaceInformation * siC_{nullptr};
 
   /** \brief Control sampler */
-  ControlSamplerPtr controlSampler_{nullptr};
+  ompl::control::ControlSamplerPtr controlSampler_{nullptr};
 
   /** \brief The optimization objective. */
-  base::OptimizationObjectivePtr opt_{nullptr};
+  ompl::base::OptimizationObjectivePtr opt_{nullptr};
 
   /** \brief The random number generator */
   RNG rng_;
@@ -150,9 +132,6 @@ private:
   /** \brief Keep a global copy of start and goal vertex properties*/
   VertexProperty * startVertex_{nullptr};
   VertexProperty * goalVertex_{nullptr};
-
-  Eigen::VectorXd vertexes_mean_;
-  Eigen::MatrixXd vertexes_covariance_;
 
   // RVIZ Visualization of planner progess, this will be removed in the future
   /** \brief static method to visulize a graph in RVIZ*/

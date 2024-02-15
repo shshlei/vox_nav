@@ -39,13 +39,9 @@ public:
 
   virtual ~PlannerCore() = default;
 
-  virtual void initialize(
-    rclcpp::Node * parent,
-    const std::string & plugin_name) = 0;
+  virtual void initialize(rclcpp::Node * parent, const std::string & plugin_name) = 0;
 
-  virtual std::vector<geometry_msgs::msg::PoseStamped> createPlan(
-    const geometry_msgs::msg::PoseStamped & start,
-    const geometry_msgs::msg::PoseStamped & goal) = 0;
+  virtual std::vector<geometry_msgs::msg::PoseStamped> createPlan(const geometry_msgs::msg::PoseStamped & start, const geometry_msgs::msg::PoseStamped & goal) = 0;
 
   virtual bool isStateValid(const ompl::base::State * state) = 0;
 
@@ -63,13 +59,16 @@ protected:
   rclcpp::Node::SharedPtr get_map_client_node_;
 
   ompl::geometric::SimpleSetupPtr simple_setup_;
+
   // to ensure safety when accessing global var curr_frame_
   std::mutex global_mutex_;
+
   // the topic to subscribe in order capture a frame
   std::string planner_name_;
 
   // related to density of created path
   int interpolation_parameter_;
+
   // max time the planner can spend before coming up with a solution
   double planner_timeout_;
 

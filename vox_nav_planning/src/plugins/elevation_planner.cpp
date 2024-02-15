@@ -18,6 +18,13 @@
 
 #include <pluginlib/class_list_macros.hpp>
 
+#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+
+#include <fcl/config.h>
+#include <fcl/geometry/octree/octree.h>
+#include <fcl/math/constants.h>
+#include <fcl/narrowphase/collision.h>
+
 #include <memory>
 #include <random>
 #include <string>

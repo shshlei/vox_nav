@@ -15,26 +15,19 @@
 #ifndef VOX_NAV_PLANNING__RRT__LQRPLANNER_HPP_
 #define VOX_NAV_PLANNING__RRT__LQRPLANNER_HPP_
 
-#include "vox_nav_planning/planner_core.hpp"
-
-#include <vox_nav_utilities/elevation_state_space.hpp>
-
-#include <nav_msgs/msg/path.hpp>
-
-#include <ompl/base/OptimizationObjective.h>
-#include <ompl/base/StateSampler.h>
-#include <ompl/base/ValidStateSampler.h>
+#include <ompl/base/State.h>
+#include <ompl/base/Planner.h>
 #include <ompl/control/SpaceInformation.h>
-#include <ompl/datastructures/NearestNeighbors.h>
 
-#include <limits>
+#include <tuple>
+#include <vector>
 
 namespace ompl
 {
 namespace control
 {
 
-class LQRPlanner : public base::Planner
+class LQRPlanner : public ompl::base::Planner
 {
 public:
   /** \brief Plan from start to pose by LQR for linearized car model
@@ -47,9 +40,9 @@ public:
   void setup() override;
 
   /** \brief Continue solving for some amount of time. Return true if solution was found. */
-  base::PlannerStatus solve(const base::PlannerTerminationCondition & ptc) override;
+  ompl::base::PlannerStatus solve(const ompl::base::PlannerTerminationCondition & ptc) override;
 
-  void getPlannerData(base::PlannerData & data) const override;
+  void getPlannerData(ompl::base::PlannerData & data) const override;
 
   /** \brief Clear datastructures. Call this function if the
       input data to the planner has changed and you do not
@@ -59,9 +52,9 @@ public:
   /** \brief Free the memory allocated by this planner */
   void freeMemory();
 
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr rrt_nodes_pub_;
+  // rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr rrt_nodes_pub_;
 
-  rclcpp::Node::SharedPtr node_;
+  // rclcpp::Node::SharedPtr node_;
 
   double dt_{0.25};
   double max_time_{2.0};
@@ -73,46 +66,32 @@ public:
   double phi_bound_{0.4};
   double goal_tolerance_{0.5};
 
-  void set_v(
-    double v)
+  void set_v(double v)
   {
     v_r_ = v;
   }
 
-  void set_dt(
-    double dt)
+  void set_dt(double dt)
   {
     dt_ = dt;
   }
 
-  void set_phi_bound(
-    double phi_bound)
+  void set_phi_bound(double phi_bound)
   {
     phi_bound_ = phi_bound;
   }
 
-  void set_max_time(
-    double max_time)
+  void set_max_time(double max_time)
   {
     max_time_ = max_time;
   }
 
-  void set_goal_tolerance(
-    double goal_tolerance)
+  void set_goal_tolerance(double goal_tolerance)
   {
     goal_tolerance_ = goal_tolerance;
   }
 
-  void update_params(
-    double dt,
-    double max_time,
-    double q1,
-    double q2,
-    double r,
-    double v_r,
-    double L,
-    double phi_bound,
-    double goal_tolerance)
+  void update_params(double dt, double max_time, double q1, double q2, double r, double v_r, double L, double phi_bound, double goal_tolerance)
   {
     dt_ = dt;
     max_time_ = max_time;
@@ -125,123 +104,12 @@ public:
     goal_tolerance_ = goal_tolerance;
   }
 
-  std::tuple<Eigen::Matrix2d, Eigen::Vector2d,
-    Eigen::Matrix2d, double>
-  getABQR()
-  {
-    Eigen::Matrix2d A(2, 2);
-    A << 0, -v_r_,
-      0, 0;
-    Eigen::Vector2d B(0, -v_r_ / L_);
-    Eigen::Matrix2d Q(2, 2);
-    Q << q1_, 0,
-      0, q2_;
-    double R(r_);
-    return std::make_tuple(A, B, Q, R);
-  }
+  std::tuple<Eigen::Matrix2d, Eigen::Vector2d, Eigen::Matrix2d, double> getABQR();
 
-  std::vector<base::State *> compute_LQR_plan(
-    base::State * start_state,
-    base::State * goal_state,
-    std::vector<base::State *> & resulting_path)
-  {
-    // double start_to_goal_dist = si_->distance(start_state, goal_state);
-
-    double time = 0.0;
-    // double last_dist_to_goal = INFINITY;
-    resulting_path.push_back(start_state);
-
-    const auto * start_cstate = start_state->as<ompl::base::ElevationStateSpace::StateType>();
-    // const auto * start_so2 = start_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
-    const auto * start_xyzv = start_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
-
-    const auto * goal_cstate = goal_state->as<ompl::base::ElevationStateSpace::StateType>();
-    // const auto * goal_so2 = goal_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
-    const auto * goal_xyzv = goal_cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
-
-    std::tuple<Eigen::Matrix2d, Eigen::Vector2d,
-      Eigen::Matrix2d, double>
-      ABQR = getABQR();
-    Eigen::Matrix2d A = std::get<0>(ABQR);
-    Eigen::Vector2d B = std::get<1>(ABQR);
-    Eigen::Matrix2d Q = std::get<2>(ABQR);
-    double R = std::get<3>(ABQR);
-
-    int iter = 0;
-
-    while (time < max_time_) {
-      auto * latest_cstate =
-        resulting_path.back()->as<ompl::base::ElevationStateSpace::StateType>();
-      const auto * latest_so2 = latest_cstate->as<ompl::base::SO2StateSpace::StateType>(0);
-      const auto * latest_xyzv = latest_cstate->as<ompl::base::RealVectorStateSpace::StateType>(
-        1);
-
-      double xc = latest_xyzv->values[0];
-      double yc = latest_xyzv->values[1];
-      double thetac = latest_so2->value;
-
-      double theta_r = std::atan2(
-        (yc - start_xyzv->values[1]),
-        (xc - start_xyzv->values[0]));
-
-      Eigen::MatrixXd T(3, 3);
-      T << -std::cos(theta_r), -std::sin(theta_r), 0,
-        std::sin(theta_r), -std::cos(theta_r), 0,
-        0, 0, 1;
-
-      Eigen::VectorXd e(3);
-      e(0) = xc - goal_xyzv->values[0];
-      e(1) = yc - goal_xyzv->values[1];
-      e(2) = thetac - theta_r;
-
-      Eigen::Vector3d Te_dynamics = T * e;
-      Eigen::Vector2d X(Te_dynamics(1), Te_dynamics(2));
-
-      double phi = lqr_control(A, B, Q, R, X);
-      phi = std::clamp<double>(phi, -phi_bound_, phi_bound_);
-
-      Eigen::VectorXd U(2);
-      U(0) = v_r_;
-      U(1) = phi;
-
-      // Propogate the states with computed optimal control3
-      // Store the state in the resulting path as that really is
-      auto * this_state = si_->allocState();
-      auto * this_cstate = this_state->as<ompl::base::ElevationStateSpace::StateType>();
-
-      /*propogate according to car-like dynamics*/
-      auto d_to_goal = si_->distance(this_state, goal_state);
-      auto d_to_start = si_->distance(this_state, start_state);
-
-      // linear inetrpolation for intermediate z values
-      double true_z =
-        ((start_xyzv->values[2] * d_to_goal) + (goal_xyzv->values[2] * d_to_start)) /
-        (d_to_start + d_to_goal);
-      this_cstate->setXYZV(
-        xc + dt_ * U(0) * std::cos(thetac),
-        yc + dt_ * U(0) * std::sin(thetac),
-        true_z,
-        U(0));
-
-      this_cstate->setSO2(
-        thetac + dt_ * (U(0) * std::tan(U(1)) / L_));
-
-      if (si_->distance(this_state, goal_state) < goal_tolerance_) {
-        // if Reached the goal or max time reached, break the loop
-        U(0) = 0;
-        break;
-      }
-
-      resulting_path.push_back(this_state);
-
-      // TIME STEP INCREASE
-      time += dt_;
-
-      iter++;
-    }
-
-    return resulting_path;
-  }
+  std::vector<ompl::base::State *> compute_LQR_plan(
+    ompl::base::State * start_state,
+    ompl::base::State * goal_state,
+    std::vector<ompl::base::State *> & resulting_path);
 
   // return optimal steering angle
   double lqr_control(
@@ -249,13 +117,7 @@ public:
     const Eigen::Vector2d & B,
     const Eigen::Matrix2d & Q,
     const double & R,
-    const Eigen::Vector2d & X)
-  {
-    std::tuple<Eigen::Vector2d, Eigen::Matrix2d, Eigen::VectorXcd> res = dlqr(A, B, Q, R);
-    Eigen::Vector2d K = std::get<0>(res);
-    double phi = (K.transpose() * X).value();
-    return phi;
-  }
+    const Eigen::Vector2d & X);
 
   /**
    * @brief authored by: Horibe Takamasa; https://github.com/TakaHoribe
@@ -269,24 +131,7 @@ public:
     Eigen::Matrix2d & P,
     const double dt = 0.001,
     const double & tolerance = 1.E-5,
-    const uint iter_max = 100000)
-  {
-    P = Q;  // initialize
-    Eigen::Matrix2d P_next;
-    Eigen::Matrix2d AT = A.transpose();
-    double Rinv = 1.0 / R;
-
-    double diff;
-    for (uint i = 0; i < iter_max; ++i) {
-      P_next = P + (P * A + AT * P - P * B * Rinv * B.transpose() * P + Q) * dt;
-      diff = fabs((P_next - P).maxCoeff());
-      P = P_next;
-      if (diff < tolerance) {
-        return true;
-      }
-    }
-    return false;  // over iteration limit
-  }
+    const uint iter_max = 100000);
 
   /**
    * @brief
@@ -305,14 +150,7 @@ public:
     const Eigen::Matrix2d & /*A*/,
     const Eigen::Vector2d & B,
     const Eigen::Matrix2d & /*Q*/,
-    const double & R)
-  {
-    Eigen::Matrix2d P;
-    // bool solved_dare = solve_care(A, B, Q, R, P);
-    Eigen::Vector2d K = (1 / R) * (B.transpose() * P);
-    Eigen::VectorXcd eig /* = (A - B.transpose() * K).eigenvalues()*/;
-    return std::make_tuple(K, P, eig);
-  }
+    const double & R);
 };
 
 }  // namespace control

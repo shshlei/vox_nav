@@ -13,22 +13,20 @@
 // limitations under the License.
 
 #include "vox_nav_map_server/map_manager_no_gps.hpp"
+#include <vox_nav_utilities/tf_helpers.hpp>
 
-#include <pcl/common/common.h>
-#include <pcl/common/io.h>
-#include <pcl/common/transforms.h>
-#include <pcl/conversions.h>
-#include <pcl_conversions/pcl_conversions.h>
-
-#include <octomap/octomap.h>
-#include <octomap/octomap_utils.h>
-#include <octomap_msgs/conversions.h>
-
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/convert.h>
-#include <tf2/transform_datatypes.h>
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include <pcl/conversions.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/transforms.hpp>
+
+#include <octomap/octomap.h>
+#include <octomap_msgs/msg/octomap.h>
+#include <octomap_msgs/conversions.h>
 
 #include <algorithm>
 #include <memory>
@@ -52,6 +50,7 @@ MapManagerNoGPS::MapManagerNoGPS()
   elevated_surfels_pointcloud_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
   original_octomap_markers_msg_ = std::make_shared<visualization_msgs::msg::MarkerArray>();
   elevated_surfel_octomap_markers_msg_ = std::make_shared<visualization_msgs::msg::MarkerArray>();
+
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
   static_transform_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
@@ -150,7 +149,6 @@ MapManagerNoGPS::MapManagerNoGPS()
     "vox_nav/map_server/elevated_surfel_markers", rclcpp::SystemDefaultsQoS());
 
   pcd_map_pointcloud_ = vox_nav_utilities::loadPointcloudFromPcd(pcd_map_filename_.c_str());
-
   RCLCPP_INFO(this->get_logger(), "Loaded a PCD map with %ld points", pcd_map_pointcloud_->points.size());
 }
 
@@ -196,11 +194,13 @@ void MapManagerNoGPS::preProcessPCDMap()
       vox_nav_utilities::OutlierRemovalType::StatisticalOutlierRemoval);
     pcd_map_pointcloud_ = vox_nav_utilities::removeNans<pcl::PointXYZRGB>(pcd_map_pointcloud_);
 
-    /*pcd_map_pointcloud_ = vox_nav_utilities::removeOutliersFromInputCloud(
+    /*
+    pcd_map_pointcloud_ = vox_nav_utilities::removeOutliersFromInputCloud(
       pcd_map_pointcloud_,
       preprocess_params_.remove_outlier_min_neighbors_in_radius,
       preprocess_params_.remove_outlier_radius_search,
-      vox_nav_utilities::OutlierRemovalType::RadiusOutlierRemoval);*/
+      vox_nav_utilities::OutlierRemovalType::RadiusOutlierRemoval);
+    */
 
     RCLCPP_INFO(this->get_logger(),
       "Applied a series of noise removal functions"
@@ -208,13 +208,6 @@ void MapManagerNoGPS::preProcessPCDMap()
       pcd_map_pointcloud_->points.size());
   }
   // apply a rigid body transfrom if it was given one
-  /*pcd_map_pointcloud_ = vox_nav_utilities::transformCloud(
-    pcd_map_pointcloud_,
-    vox_nav_utilities::getRigidBodyTransform(
-      pcd_map_transform_matrix_.translation_,
-      pcd_map_transform_matrix_.rpyIntrinsic_,
-      get_logger()));*/
-
   Eigen::Affine3d bt = vox_nav_utilities::getRigidBodyTransform(pcd_map_transform_matrix_.translation_,
     pcd_map_transform_matrix_.rpyIntrinsic_, get_logger());
   auto final_tr = tf2::eigenToTransform(bt);
@@ -223,8 +216,7 @@ void MapManagerNoGPS::preProcessPCDMap()
   // Experimental, this assumes we have no prior infromation of
   // segmentation, so mark all points as traversable
   // by painting them green > 0
-  pcd_map_pointcloud_ =
-    vox_nav_map_server::set_cloud_color(pcd_map_pointcloud_, std::vector<double>({0.0, 255.0, 0.0}));
+  pcd_map_pointcloud_ = vox_nav_map_server::set_cloud_color(pcd_map_pointcloud_, std::vector<double>({0.0, 255.0, 0.0}));
 }
 
 void MapManagerNoGPS::regressCosts()
@@ -276,8 +268,7 @@ void MapManagerNoGPS::regressCosts()
     // regulate all costs to be less than 1.0
     double max_tilt = std::max(std::abs(rpy[0]), std::abs(rpy[1]));
     double slope_cost = std::min(max_tilt / cost_params_.max_allowed_tilt, 1.0) * cost_params_.max_color_range;
-    double energy_gap_cost =
-      std::min(max_energy_gap / cost_params_.max_allowed_energy_gap, 1.0) * cost_params_.max_color_range;
+    double energy_gap_cost = std::min(max_energy_gap / cost_params_.max_allowed_energy_gap, 1.0) * cost_params_.max_color_range;
     double deviation_of_points_cost =
       std::min(average_point_deviation / cost_params_.max_allowed_point_deviation, 1.0) *
       cost_params_.max_color_range;
@@ -295,8 +286,7 @@ void MapManagerNoGPS::regressCosts()
       surfel_cloud = vox_nav_map_server::set_cloud_color(surfel_cloud, std::vector<double>({255.0, 0, 0}));
     }
     else {
-      surfel_cloud = vox_nav_map_server::set_cloud_color(
-        surfel_cloud, std::vector<double>({0.0, cost_params_.max_color_range - total_cost, total_cost}));
+      surfel_cloud = vox_nav_map_server::set_cloud_color(surfel_cloud, std::vector<double>({0.0, cost_params_.max_color_range - total_cost, total_cost}));
 
       pcl::PointSurfel elevated_surfel;
       elevated_surfel.x = surfel_center_point.x + cost_params_.node_elevation_distance * plane_model->values[0];
@@ -308,7 +298,7 @@ void MapManagerNoGPS::regressCosts()
       elevated_surfels_cloud.points.push_back(elevated_surfel);
 
       // inflate surfel as a cylinder by appending surfel cloud and their
-      // up and down projections(by using surfel normal)
+      // up and down projections (by using surfel normal)
       for (auto && sp : surfel_cloud->points) {
         double step_size = 0.02;
         for (double step = 0.00; step < 0.00; step += step_size) {

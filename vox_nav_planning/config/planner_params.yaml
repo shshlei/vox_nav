@@ -1,11 +1,11 @@
 vox_nav_planner_server_rclcpp_node:
   ros__parameters:
-    planner_plugin: "OptimalElevationPlanner"                 # other options: "SE2Planner", "ElevationPlanner", "OptimalElevationPlanner"
+    planner_plugin: "OptimalElevationPlanner"          # other options: "SE2Planner", "ElevationPlanner", "OptimalElevationPlanner"
     expected_planner_frequency: 1.0
     planner_name: "AnytimePathShortening"              # PRMstar,LazyPRMstar,RRTstar,RRTsharp,RRTXstatic,InformedRRTstar,BITstar, 
                                                        # ABITstar,AITstar,CForest,LBTRRT,SST,TRRT,SPARS,SPARStwo,FMT,AnytimePathShortening
     planner_timeout: 10.0
-    interpolation_parameter: 25                         # set to 0 if you wanna disable interpolating and smooting, otherwise 25 is a good default value                    
+    interpolation_parameter: 25                        # set to 0 if you wanna disable interpolating and smooting, otherwise 25 is a good default value                    
     octomap_voxel_size: 0.4
     robot_body_dimens:
       x: 1.2

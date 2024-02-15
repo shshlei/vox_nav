@@ -14,7 +14,6 @@
 
 #include "vox_nav_planning/native_planners/LQRRRTStar.hpp"
 
-
 ompl::control::LQRRRTStar::LQRRRTStar(const SpaceInformationPtr & si)
 : base::Planner(si, "LQRRRTStar")
 {
@@ -35,15 +34,15 @@ void ompl::control::LQRRRTStar::setup()
     nn_.reset(tools::SelfConfig::getDefaultNearestNeighbors<Node *>(this));
   }
   nn_->setDistanceFunction(
-    [this](const Node * a, const Node * b)
-    {
+    [this](const Node * a, const Node * b) {
       return distanceFunction(a, b);
     });
 
   if (pdef_) {
     if (pdef_->hasOptimizationObjective()) {
       opt_ = pdef_->getOptimizationObjective();
-    } else {
+    }
+    else {
       OMPL_WARN("%s: No optimization object set. Using path length", getName().c_str());
       opt_ = std::make_shared<base::PathLengthOptimizationObjective>(si_);
       pdef_->setOptimizationObjective(opt_);
@@ -55,8 +54,7 @@ void ompl::control::LQRRRTStar::setup()
 
   rrt_nodes_pub_ =
     node_->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "vox_nav/rrtstar/nodes", rclcpp::SystemDefaultsQoS());
-
+      "vox_nav/rrtstar/nodes", rclcpp::SystemDefaultsQoS());
 }
 
 void ompl::control::LQRRRTStar::clear()
@@ -72,9 +70,7 @@ void ompl::control::LQRRRTStar::clear()
 
 void ompl::control::LQRRRTStar::freeMemory()
 {
-
 }
-
 
 ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
   const base::PlannerTerminationCondition & ptc)
@@ -126,7 +122,8 @@ ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
     /* sample random state (with goal biasing) */
     if (goal_s && rng_.uniform01() < goalBias_ && goal_s->canSample()) {
       goal_s->sampleGoal(random_state);
-    } else {
+    }
+    else {
       // sampler_->sampleUniform(random_state);
       valid_state_sampler_->sample(random_state);
     }
@@ -135,7 +132,9 @@ ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
 
     double relative_cost = 0.0;
     auto new_node = steer(nearest_node, random_node, &relative_cost);
-    if (!new_node) {continue;}
+    if (!new_node) {
+      continue;
+    }
 
     if (check_collision(new_node)) {
       std::vector<Node *> near_nodes = find_near_nodes(new_node);
@@ -152,11 +151,9 @@ ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
     iterations++;
 
     if (iterations % 200 == 0 && last_valid_node &&
-      static_cast<int>(last_valid_node->cost_.value()))
-    {
+        static_cast<int>(last_valid_node->cost_.value())) {
       OMPL_INFORM("Current solution cost %.2f", last_valid_node->cost_.value());
     }
-
   }
 
   double relative_cost = 0.0;
@@ -245,7 +242,6 @@ ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
   double approxdif = std::numeric_limits<double>::infinity();
 
   if (final_node) {
-
     OMPL_INFORM("Final solution cost %.2f", final_node->cost_.value());
 
     std::vector<base::State *> final_course = generate_final_course(last_valid_node);
@@ -271,14 +267,16 @@ ompl::base::PlannerStatus ompl::control::LQRRRTStar::solve(
       approximate = false;
       pdef_->addSolutionPath(path, approximate, approxdif, getName());
       OMPL_INFORM("Found solution with cost %.2f", last_valid_node->cost_.value());
-    } else if (!solv && (path->length() > 1.0 )) { // approx
+    }
+    else if (!solv && (path->length() > 1.0)) {  // approx
       solved = true;
       approximate = true;
       pdef_->addSolutionPath(path, approximate, approxdif, getName());
       OMPL_INFORM(
         "%s: Approx solution with cost %.2f",
         getName().c_str(), last_valid_node->cost_.value());
-    } else {
+    }
+    else {
       solved = false;
       approximate = false;
       pdef_->addSolutionPath(path, approximate, approxdif, getName());
@@ -314,7 +312,8 @@ void ompl::control::LQRRRTStar::getPlannerData(base::PlannerData & data) const
       data.addEdge(
         base::PlannerDataVertex(m->parent_->state_),
         base::PlannerDataVertex(m->state_));
-    } else {
+    }
+    else {
       data.addStartVertex(base::PlannerDataVertex(m->state_));
     }
   }

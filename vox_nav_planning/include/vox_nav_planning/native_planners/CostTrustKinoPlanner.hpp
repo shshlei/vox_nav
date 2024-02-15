@@ -15,37 +15,21 @@
 #ifndef VOX_NAV_PLANNING__NATIVE_PLANNERS__COST_TRUST_KINO_PLANNER_HPP_
 #define VOX_NAV_PLANNING__NATIVE_PLANNERS__COST_TRUST_KINO_PLANNER_HPP_
 
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/astar_search.hpp>
-#include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/graph/graphviz.hpp>
-#include <boost/graph/random.hpp>
-#include <boost/random.hpp>
-
-#include <ompl/control/DirectedControlSampler.h>
-#include <ompl/control/SimpleDirectedControlSampler.h>
-#include <ompl/control/SimpleSetup.h>
-#include <ompl/control/planners/PlannerIncludes.h>
-#include <ompl/control/spaces/RealVectorControlSpace.h>
+#include <rclcpp/rclcpp.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 // OMPL BASE
-#include "rclcpp/rclcpp.hpp"
-#include "vox_nav_utilities/elevation_state_space.hpp"
+#include <ompl/base/State.h>
+#include <ompl/base/Cost.h>
+#include <ompl/base/Planner.h>
+#include <ompl/base/OptimizationObjective.h>
 
-#include "visualization_msgs/msg/marker_array.hpp"
+// OMPL CONTROL 
+#include <ompl/control/SpaceInformation.h>
+#include <ompl/control/PathControl.h>
 
-#include <ompl/base/goals/GoalSampleableRegion.h>
-#include <ompl/base/objectives/MaximizeMinClearanceObjective.h>
-#include <ompl/base/objectives/MinimaxObjective.h>
-#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
-#include <ompl/base/samplers/informed/PathLengthDirectInfSampler.h>
-#include <ompl/base/samplers/informed/RejectionInfSampler.h>
-#include <ompl/base/spaces/RealVectorStateSpace.h>
-#include <ompl/datastructures/LPAstarOnGraph.h>
+// OMPL DATASTUCTURE
 #include <ompl/datastructures/NearestNeighbors.h>
-#include <ompl/datastructures/NearestNeighborsFLANN.h>
-#include <ompl/tools/config/SelfConfig.h>
-#include <ompl/util/GeometricEquations.h>
 
 #include <atomic>
 #include <cstdint>
@@ -101,11 +85,11 @@ struct CostTrustParameters
   int num_of_neighbors_to_consider_for_density_{20};
 };
 
-class CostTrustKinoPlanner : public base::Planner
+class CostTrustKinoPlanner : public ompl::base::Planner
 {
 public:
   /** \brief Constructor */
-  CostTrustKinoPlanner(const SpaceInformationPtr & si);
+  CostTrustKinoPlanner(const ompl::control::SpaceInformationPtr & si);
 
   /** \brief Destructor */
   ~CostTrustKinoPlanner() override;
@@ -114,10 +98,10 @@ public:
   void setup() override;
 
   /** \brief Continue solving for some amount of time. Return true if solution was found. */
-  base::PlannerStatus solve(const base::PlannerTerminationCondition & ptc) override;
+  ompl::base::PlannerStatus solve(const ompl::base::PlannerTerminationCondition & ptc) override;
 
   /** \brief Get the internal data owned by planner, NOT IMPLEMENTED */
-  void getPlannerData(base::PlannerData & data) const override;
+  void getPlannerData(ompl::base::PlannerData & data) const override;
 
   /** \brief Clear datastructures. Call this function if the
       input data to the planner has changed and you do not
@@ -147,7 +131,7 @@ public:
   double distanceFunction(const VertexProperty * a, const VertexProperty * b) const;
 
   /** \brief Compute distance between states */
-  double distanceFunction(const base::State * a, const base::State * b) const;
+  double distanceFunction(const ompl::base::State * a, const ompl::base::State * b) const;
 
   /** \brief Given its vertex_descriptor (id),
    * return a const pointer to VertexProperty in control graph g_forward_control_  */
@@ -182,10 +166,10 @@ private:
   CostTrustParameters params_;
 
   /** \brief Control space information */
-  const SpaceInformation * siC_{nullptr};
+  const ompl::control::SpaceInformation * siC_{nullptr};
 
   /** \brief The optimization objective. */
-  base::OptimizationObjectivePtr opt_{nullptr};
+  ompl::base::OptimizationObjectivePtr opt_{nullptr};
 
   /** \brief Current cost of best path. The informed sampling strategy needs it. */
   ompl::base::Cost bestControlCost_{std::numeric_limits<double>::infinity()};
@@ -215,7 +199,7 @@ private:
 
   void extendFrontiers(std::vector<VertexProperty *> & frontier_nodes, std::size_t num_branch_to_extend,
     std::shared_ptr<ompl::NearestNeighbors<VertexProperty *>> & nn_structure,
-    const base::PlannerTerminationCondition & ptc, VertexProperty * target_vertex_property,
+    const ompl::base::PlannerTerminationCondition & ptc, VertexProperty * target_vertex_property,
     std::shared_ptr<PathControl> & path, std::vector<VertexProperty *> & control_paths_vertices,
     const bool exact_solution_found, bool * should_stop_exploration,
     const std::shared_ptr<PathControl> & current_best_path);
