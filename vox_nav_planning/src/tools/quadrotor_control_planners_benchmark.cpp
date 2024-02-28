@@ -17,13 +17,13 @@
 namespace vox_nav_planning
 {
 QuadrotorControlPlannersBenchMarking::QuadrotorControlPlannersBenchMarking()
-  : Node("quadrotor_control_benchmarking_rclcpp_node")
+: Node("quadrotor_control_benchmarking_rclcpp_node")
 {
   RCLCPP_INFO(this->get_logger(), "Creating:");
 
   is_map_ready_ = false;
 
-  this->declare_parameter("selected_planners", std::vector<std::string>({ "RRTstar", "PRMstar" }));
+  this->declare_parameter("selected_planners", std::vector<std::string>({"RRTstar", "PRMstar"}));
   this->declare_parameter("robot_mesh_path", "");
   this->declare_parameter("planner_timeout", 5.0);
 
@@ -152,14 +152,14 @@ QuadrotorControlPlannersBenchMarking::QuadrotorControlPlannersBenchMarking()
 
   typedef std::shared_ptr<fcl::CollisionGeometryf> CollisionGeometryPtr_t;
   CollisionGeometryPtr_t robot_body_box(
-      new fcl::Box<float>(robot_body_dimensions_.x, robot_body_dimensions_.y, robot_body_dimensions_.z));
+    new fcl::Box<float>(robot_body_dimensions_.x, robot_body_dimensions_.y, robot_body_dimensions_.z));
 
   fcl::CollisionObjectf robot_body_box_object(robot_body_box, fcl::Transform3f());
   robot_collision_object_ = std::make_shared<fcl::CollisionObjectf>(robot_body_box_object);
   get_map_client_node_ = std::make_shared<rclcpp::Node>("get_traversability_map_client_node");
 
   get_traversability_map_client_ =
-      get_map_client_node_->create_client<vox_nav_msgs::srv::GetTraversabilityMap>("get_traversability_map");
+    get_map_client_node_->create_client<vox_nav_msgs::srv::GetTraversabilityMap>("get_traversability_map");
 
   octomap_publisher_ = this->create_publisher<octomap_msgs::msg::Octomap>("octomap", rclcpp::SystemDefaultsQoS());
   setupMap();
@@ -223,20 +223,19 @@ QuadrotorControlPlannersBenchMarking::QuadrotorControlPlannersBenchMarking()
   control_simple_setup_ = std::make_shared<ompl::control::SimpleSetup>(control_state_space_);
   control_simple_setup_->setOptimizationObjective(getOptimizationObjective());
   control_simple_setup_->setStateValidityChecker(
-      std::bind(&QuadrotorControlPlannersBenchMarking::isStateValid, this, std::placeholders::_1));
+    std::bind(&QuadrotorControlPlannersBenchMarking::isStateValid, this, std::placeholders::_1));
 
   RCLCPP_INFO(this->get_logger(), "Selected planners for benchmarking:");
-  for (auto&& i : selected_planners_)
-  {
+  for (auto && i : selected_planners_) {
     RCLCPP_INFO(this->get_logger(), " %s", i.c_str());
   }
 
   // Initialize pubs & subs
   plan_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(sample_bencmark_plans_topic_.c_str(),
-                                                                                 rclcpp::SystemDefaultsQoS());
+    rclcpp::SystemDefaultsQoS());
 
   start_goal_poses_publisher_ =
-      this->create_publisher<geometry_msgs::msg::PoseArray>("start_goal_poses", rclcpp::SystemDefaultsQoS());
+    this->create_publisher<geometry_msgs::msg::PoseArray>("start_goal_poses", rclcpp::SystemDefaultsQoS());
 }
 
 QuadrotorControlPlannersBenchMarking::~QuadrotorControlPlannersBenchMarking()
@@ -244,13 +243,13 @@ QuadrotorControlPlannersBenchMarking::~QuadrotorControlPlannersBenchMarking()
   RCLCPP_INFO(this->get_logger(), "Destroying:");
 }
 
-void QuadrotorControlPlannersBenchMarking::propagate(const ompl::control::SpaceInformation* si,
-                                                     const ompl::base::State* start,
-                                                     const ompl::control::Control* control, const double duration,
-                                                     ompl::base::State* result)
+void QuadrotorControlPlannersBenchMarking::propagate(const ompl::control::SpaceInformation * si,
+  const ompl::base::State * start,
+  const ompl::control::Control * control, const double duration,
+  ompl::base::State * result)
 {
-  const auto* states = start->as<ompl::base::RealVectorStateSpace::StateType>();
-  const auto* controls = control->as<ompl::control::RealVectorControlSpace::ControlType>();
+  const auto * states = start->as<ompl::base::RealVectorStateSpace::StateType>();
+  const auto * controls = control->as<ompl::control::RealVectorControlSpace::ControlType>();
 
   // Extract all the states and propagate them
   double x_pos = states->values[0];
@@ -283,11 +282,11 @@ void QuadrotorControlPlannersBenchMarking::propagate(const ompl::control::SpaceI
 
   // Propagate the states
   auto propogated_states = quadrotor_controller_.step(x_pos, y_pos, z_pos, roll, pitch, yaw, x_vel, y_vel, z_vel,
-                                                      roll_vel, pitch_vel, yaw_vel, x_acc, y_acc, z_acc, c_z_pos, c_yaw,
-                                                      c_z_vel, c_x_acc, c_y_acc, c_z_acc, duration);
+    roll_vel, pitch_vel, yaw_vel, x_acc, y_acc, z_acc, c_z_pos, c_yaw,
+    c_z_vel, c_x_acc, c_y_acc, c_z_acc, duration);
 
   // Set the result
-  auto* result_states = result->as<ompl::base::RealVectorStateSpace::StateType>();
+  auto * result_states = result->as<ompl::base::RealVectorStateSpace::StateType>();
   std::copy(propogated_states.begin(), propogated_states.end(), result_states->values);
 
   // Enforce the bounds
@@ -298,7 +297,7 @@ ompl::base::OptimizationObjectivePtr QuadrotorControlPlannersBenchMarking::getOp
 {
   // select a optimizatio objective
   ompl::base::OptimizationObjectivePtr length_objective(
-      new ompl::base::PathLengthOptimizationObjective(control_simple_setup_->getSpaceInformation()));
+    new ompl::base::PathLengthOptimizationObjective(control_simple_setup_->getSpaceInformation()));
 
   return ompl::base::OptimizationObjectivePtr(length_objective);
 }
@@ -315,13 +314,12 @@ std::map<int, ompl::control::PathControl> QuadrotorControlPlannersBenchMarking::
   si->setPropagationStepSize(0.01);
 
   control_simple_setup_->setStatePropagator(
-      [this, si](const ompl::base::State* state, const ompl::control::Control* control, const double duration,
-                 ompl::base::State* result) { this->propagate(si.get(), state, control, duration, result); });
+    [this, si](const ompl::base::State * state, const ompl::control::Control * control, const double duration,
+      ompl::base::State * result) { this->propagate(si.get(), state, control, duration, result); });
 
   std::stringstream ss;
 
-  for (int i = 0; i < epochs_; i++)
-  {
+  for (int i = 0; i < epochs_; i++) {
     paths_map.clear();
 
     // spin until a valid random start and goal poses are found. Also
@@ -383,13 +381,11 @@ std::map<int, ompl::control::PathControl> QuadrotorControlPlannersBenchMarking::
 
     std::mutex plan_mutex;
     int index(0);
-    for (auto&& planner_name : selected_planners_)
-    {
+    for (auto && planner_name : selected_planners_) {
       ompl::base::PlannerPtr planner_ptr;
       initializeSelectedControlPlanner(planner_ptr, planner_name, si, logger_);
 
-      if (publish_a_sample_bencmark_)
-      {
+      if (publish_a_sample_bencmark_) {
         std::lock_guard<std::mutex> guard(plan_mutex);
 
         RCLCPP_INFO(this->get_logger(), "Creating sample plans.");
@@ -399,12 +395,10 @@ std::map<int, ompl::control::PathControl> QuadrotorControlPlannersBenchMarking::
         // control_simple_setup_->print(std::cout);
         ompl::base::PlannerStatus solved = control_simple_setup_->solve(planner_timeout_);
         ompl::control::PathControl solution_path(si);
-        try
-        {
+        try {
           solution_path = control_simple_setup_->getSolutionPath();
         }
-        catch (const std::exception& e)
-        {
+        catch (const std::exception & e) {
           std::cerr << e.what() << '\n';
           RCLCPP_WARN(logger_, "Exception occured while retrivieng control solution path %s", e.what());
           control_simple_setup_->clear();
@@ -413,8 +407,7 @@ std::map<int, ompl::control::PathControl> QuadrotorControlPlannersBenchMarking::
         ss << planner_name.c_str() << " " << solved << " " << solution_path.length() << "\n";
         std::pair<int, ompl::control::PathControl> curr_pair(index, solution_path);
         if (solved == ompl::base::PlannerStatus::EXACT_SOLUTION ||
-            solved == ompl::base::PlannerStatus::APPROXIMATE_SOLUTION || solved == ompl::base::PlannerStatus::TIMEOUT)
-        {
+            solved == ompl::base::PlannerStatus::APPROXIMATE_SOLUTION || solved == ompl::base::PlannerStatus::TIMEOUT) {
           paths_map.insert(curr_pair);
         }
         control_simple_setup_->clear();
@@ -431,9 +424,9 @@ std::map<int, ompl::control::PathControl> QuadrotorControlPlannersBenchMarking::
   return paths_map;
 }
 
-bool QuadrotorControlPlannersBenchMarking::isStateValid(const ompl::base::State* state)
+bool QuadrotorControlPlannersBenchMarking::isStateValid(const ompl::base::State * state)
 {
-  const auto* cstate = state->as<ompl::base::RealVectorStateSpace::StateType>();
+  const auto * cstate = state->as<ompl::base::RealVectorStateSpace::StateType>();
   auto x = cstate->values[0];
   auto y = cstate->values[1];
   auto z = cstate->values[2];
@@ -453,36 +446,31 @@ bool QuadrotorControlPlannersBenchMarking::isStateValid(const ompl::base::State*
   fcl::CollisionResultf collisionWithFullMapResult;
 
   fcl::collide<float>(robot_collision_object_.get(), original_octomap_collision_object_.get(), requestType,
-                      collisionWithFullMapResult);
+    collisionWithFullMapResult);
 
   return !collisionWithFullMapResult.isCollision();
 }
 
 void QuadrotorControlPlannersBenchMarking::publishSamplePlans(std::map<int, ompl::control::PathControl> sample_paths)
 {
-  if (!publish_a_sample_bencmark_)
-  {
+  if (!publish_a_sample_bencmark_) {
     RCLCPP_INFO(this->get_logger(), "Will not publish sample plans.");
   }
   visualization_msgs::msg::MarkerArray marker_array;
   int total_poses = 0;
 
   auto it = sample_paths.begin();
-  while (it != sample_paths.end())
-  {
-    for (std::size_t curr_path_state = 0; curr_path_state < it->second.getStateCount(); curr_path_state++)
-    {
+  while (it != sample_paths.end()) {
+    for (std::size_t curr_path_state = 0; curr_path_state < it->second.getStateCount(); curr_path_state++) {
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "map";
       marker.header.stamp = rclcpp::Clock().now();
 
-      if (!robot_mesh_path_.empty())
-      {
+      if (!robot_mesh_path_.empty()) {
         marker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
         marker.mesh_resource = robot_mesh_path_;
       }
-      else
-      {
+      else {
         marker.type = visualization_msgs::msg::Marker::SPHERE;
       }
 
@@ -495,7 +483,7 @@ void QuadrotorControlPlannersBenchMarking::publishSamplePlans(std::map<int, ompl
       marker.color = getColorByIndex(it->first);
       marker.ns = "path" + std::to_string(it->first);
 
-      const auto* cstate = it->second.getState(curr_path_state)->as<ompl::base::RealVectorStateSpace::StateType>();
+      const auto * cstate = it->second.getState(curr_path_state)->as<ompl::base::RealVectorStateSpace::StateType>();
 
       geometry_msgs::msg::Point p;
       p.x = cstate->values[0];
@@ -504,7 +492,7 @@ void QuadrotorControlPlannersBenchMarking::publishSamplePlans(std::map<int, ompl
 
       marker.pose.position = p;
       marker.pose.orientation =
-          vox_nav_utilities::getMsgQuaternionfromRPY(cstate->values[3], cstate->values[4], cstate->values[5]);
+        vox_nav_utilities::getMsgQuaternionfromRPY(cstate->values[3], cstate->values[4], cstate->values[5]);
 
       visualization_msgs::msg::Marker text;
       text.header.frame_id = "map";
@@ -543,8 +531,7 @@ void QuadrotorControlPlannersBenchMarking::setupMap()
 {
   const std::lock_guard<std::mutex> lock(octomap_mutex_);
 
-  if (!octomap_from_file_.empty())
-  {
+  if (!octomap_from_file_.empty()) {
     // Read Octomap from file
 
     octomap::OcTree temp_tree(0.2);
@@ -554,7 +541,7 @@ void QuadrotorControlPlannersBenchMarking::setupMap()
 
     auto original_octomap_fcl_octree = std::make_shared<fcl::OcTreef>(original_octomap_octree_);
     original_octomap_collision_object_ =
-        std::make_shared<fcl::CollisionObjectf>(std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
+      std::make_shared<fcl::CollisionObjectf>(std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
 
     RCLCPP_INFO(this->get_logger(), "Read Octomap from file");
 
@@ -564,28 +551,23 @@ void QuadrotorControlPlannersBenchMarking::setupMap()
     octomap_msg.header.frame_id = "map";
     octomap_msg.header.stamp = rclcpp::Clock().now();
 
-    for (int i = 0; i < 100; i++)
-    {
+    for (int i = 0; i < 100; i++) {
       octomap_publisher_->publish(octomap_msg);
     }
 
     RCLCPP_INFO(logger_,
-                "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
-                "octomap for state validity (aka collision check)",
-                original_octomap_octree_->size());
+      "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
+      "octomap for state validity (aka collision check)",
+      original_octomap_octree_->size());
 
     is_map_ready_ = true;
   }
-  else
-  {
-    while (!is_map_ready_ && rclcpp::ok())
-    {
+  else {
+    while (!is_map_ready_ && rclcpp::ok()) {
       auto request = std::make_shared<vox_nav_msgs::srv::GetTraversabilityMap::Request>();
 
-      while (!get_traversability_map_client_->wait_for_service(std::chrono::seconds(1)))
-      {
-        if (!rclcpp::ok())
-        {
+      while (!get_traversability_map_client_->wait_for_service(std::chrono::seconds(1))) {
+        if (!rclcpp::ok()) {
           RCLCPP_ERROR(logger_, "Interrupted while waiting for the get_traversability_map service. Exiting");
           return;
         }
@@ -593,37 +575,34 @@ void QuadrotorControlPlannersBenchMarking::setupMap()
       }
 
       auto result_future = get_traversability_map_client_->async_send_request(request);
-      if (rclcpp::spin_until_future_complete(get_map_client_node_, result_future) != rclcpp::FutureReturnCode::SUCCESS)
-      {
+      if (rclcpp::spin_until_future_complete(get_map_client_node_, result_future) != rclcpp::FutureReturnCode::SUCCESS) {
         RCLCPP_ERROR(logger_, "/get_traversability_map service call failed");
       }
       auto response = result_future.get();
 
-      if (response->is_valid)
-      {
+      if (response->is_valid) {
         is_map_ready_ = true;
       }
-      else
-      {
+      else {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         RCLCPP_INFO(logger_, "Waiting for GetTraversabilityMap service to provide correct maps.");
         continue;
       }
 
       auto original_octomap_octree =
-          dynamic_cast<octomap::OcTree*>(octomap_msgs::fullMsgToMap(response->original_octomap));
+        dynamic_cast<octomap::OcTree *>(octomap_msgs::fullMsgToMap(response->original_octomap));
       original_octomap_octree_ = std::make_shared<octomap::OcTree>(*original_octomap_octree);
 
       delete original_octomap_octree;
 
       auto original_octomap_fcl_octree = std::make_shared<fcl::OcTreef>(original_octomap_octree_);
       original_octomap_collision_object_ = std::make_shared<fcl::CollisionObjectf>(
-          std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
+        std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
 
       RCLCPP_INFO(logger_,
-                  "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
-                  "octomap for state validity (aka collision check)",
-                  original_octomap_octree_->size());
+        "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
+        "octomap for state validity (aka collision check)",
+        original_octomap_octree_->size());
     }
   }
 }
@@ -631,8 +610,7 @@ void QuadrotorControlPlannersBenchMarking::setupMap()
 std_msgs::msg::ColorRGBA QuadrotorControlPlannersBenchMarking::getColorByIndex(int index)
 {
   std_msgs::msg::ColorRGBA result;
-  switch (index)
-  {
+  switch (index) {
     case 0:  // RED:
       result.r = 0.8;
       result.g = 0.1;
@@ -749,22 +727,20 @@ double QuadrotorControlPlannersBenchMarking::getRangedRandom(double min, double 
 
 }  // namespace vox_nav_planning
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<vox_nav_planning::QuadrotorControlPlannersBenchMarking>();
-  while (rclcpp::ok() && !node->is_map_ready_)
-  {
+  while (rclcpp::ok() && !node->is_map_ready_) {
     rclcpp::spin_some(node->get_node_base_interface());
     RCLCPP_INFO(node->get_logger(),
-                "Waiting for octomap to be ready In order "
-                "to run planner bencmarking... ");
+      "Waiting for octomap to be ready In order "
+      "to run planner bencmarking... ");
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
   RCLCPP_INFO(node->get_logger(), "Octomap ready, running bencmark with given configurations");
   auto paths_map = node->doBenchMarking();
-  while (rclcpp::ok())
-  {
+  while (rclcpp::ok()) {
     node->publishSamplePlans(paths_map);
     rclcpp::spin_some(node->get_node_base_interface());
     RCLCPP_INFO(node->get_logger(), "publishing planner bencmarking... press CTRL+C to stop");

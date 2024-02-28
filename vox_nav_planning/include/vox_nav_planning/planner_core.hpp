@@ -16,6 +16,7 @@
 #define VOX_NAV_PLANNING__PLANNER_CORE_HPP_
 
 #include <rclcpp/rclcpp.hpp>
+
 #include <geometry_msgs/msg/pose_stamped.hpp>
 
 // OMPL
@@ -23,10 +24,10 @@
 #include <ompl/geometric/SimpleSetup.h>
 
 // STL
-#include <string>
-#include <vector>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <vector>
 
 namespace vox_nav_planning
 {
@@ -39,19 +40,11 @@ public:
 
   virtual ~PlannerCore() = default;
 
-  virtual void initialize(rclcpp::Node * parent, const std::string & plugin_name) = 0;
+  virtual void initialize(rclcpp::Node * parent) = 0;
 
   virtual std::vector<geometry_msgs::msg::PoseStamped> createPlan(const geometry_msgs::msg::PoseStamped & start, const geometry_msgs::msg::PoseStamped & goal) = 0;
 
   virtual bool isStateValid(const ompl::base::State * state) = 0;
-
-  /**
-   * @brief Get the Overlayed Start and Goal poses, only x and y are provided for goal ,
-   * but internally planner finds closest valid node on octomap and reassigns goal to this pose
-   *
-   * @return std::vector<geometry_msgs::msg::PoseStamped>
-   */
-  virtual std::vector<geometry_msgs::msg::PoseStamped> getOverlayedStartandGoal() = 0;
 
   virtual void setupMap() = 0;
 

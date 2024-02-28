@@ -16,17 +16,18 @@
 #define VOX_NAV_PLANNING__RRT__KINOPLANNER_HPP_
 
 #include <rclcpp/rclcpp.hpp>
+
 #include <visualization_msgs/msg/marker_array.hpp>
 
 // OMPL BASE
-#include <ompl/base/State.h>
+#include <ompl/base/OptimizationObjective.h>
 #include <ompl/base/Planner.h>
 #include <ompl/base/PlannerData.h>
 #include <ompl/base/PlannerStatus.h>
 #include <ompl/base/PlannerTerminationCondition.h>
-#include <ompl/base/OptimizationObjective.h>
+#include <ompl/base/State.h>
 
-// OMPL CONTROL 
+// OMPL CONTROL
 #include <ompl/control/Control.h>
 #include <ompl/control/ControlSampler.h>
 #include <ompl/control/PathControl.h>
@@ -34,10 +35,10 @@
 // OMPL DATASTUCTURE
 #include <ompl/datastructures/NearestNeighbors.h>
 
-#include <list>
-#include <string>
-#include <memory>
 #include <limits>
+#include <list>
+#include <memory>
+#include <string>
 
 namespace ompl
 {
@@ -75,7 +76,6 @@ public:
   void clear() override;
 
 protected:
-
   /** \brief Free the memory allocated by this planner. That is mostly in nearest neihbours. */
   void freeMemory();
 

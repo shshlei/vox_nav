@@ -12,13 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/*
- * Parts of code has been taken from
- *      Edo Jelavic
- *      Institute: ETH Zurich, Robotic Systems Lab
- */
-
 #include "vox_nav_utilities/pcl_helpers.hpp"
+
+#include <Eigen/Dense>
 
 #include <memory>
 #include <string>
@@ -27,21 +23,17 @@
 namespace vox_nav_utilities
 {
 
-Eigen::Vector3d calculateMeanOfPointPositions(
-  pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud)
+Eigen::Vector3d calculateMeanOfPointPositions(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud)
 {
   Eigen::Vector3d mean = Eigen::Vector3d::Zero();
   for (const auto & point : inputCloud->points) {
     mean += Eigen::Vector3d(point.x, point.y, point.z);
   }
   mean /= inputCloud->points.size();
-
   return mean;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformCloud(
-  pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud,
-  const Eigen::Affine3f & transformMatrix)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformCloud(const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud, const Eigen::Affine3f & transformMatrix)
 {
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
   pcl::transformPointCloud(*inputCloud, *transformedCloud, transformMatrix);
@@ -69,7 +61,7 @@ pcl::PointCloud<pcl::PointXYZRGBL>::Ptr loadPointcloudFromPcd(
 }
 
 std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> extractClusterCloudsFromPointcloud(
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloud,
+  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloud,
   double tolerance,
   int min_cluster_size,
   int max_cluster_size)
@@ -102,52 +94,8 @@ std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> extractClusterCloudsFromPoin
   return clusterClouds;
 }
 
-Eigen::Matrix3d getRotationMatrix(
-  double angle, XYZ axis,
-  const rclcpp::Logger & node_logger)
-{
-  Eigen::Matrix3d rotationMatrix = Eigen::Matrix3d::Identity();
-  switch (axis) {
-    case XYZ::X:
-    {
-      rotationMatrix = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitX());
-      break;
-    }
-    case XYZ::Y:
-    {
-      rotationMatrix = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitY());
-      break;
-    }
-    case XYZ::Z:
-    {
-      rotationMatrix = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitZ());
-      break;
-    }
-    default:
-      RCLCPP_ERROR(node_logger, "Unknown axis while trying to rotate the pointcloud");
-  }
-  return rotationMatrix;
-}
-
-Eigen::Affine3d getRigidBodyTransform(
-  const Eigen::Vector3d & translation,
-  const Eigen::Vector3d & intrinsicRpy,
-  const rclcpp::Logger & node_logger)
-{
-  Eigen::Affine3d rigidBodyTransform;
-  rigidBodyTransform.setIdentity();
-  rigidBodyTransform.translation() << translation.x(), translation.y(), translation.z();
-  Eigen::Matrix3d rotation(Eigen::Matrix3d::Identity());
-  rotation *= getRotationMatrix(intrinsicRpy.x(), XYZ::X, node_logger);
-  rotation *= getRotationMatrix(intrinsicRpy.y(), XYZ::Y, node_logger);
-  rotation *= getRotationMatrix(intrinsicRpy.z(), XYZ::Z, node_logger);
-  rigidBodyTransform.rotate(rotation);
-
-  return rigidBodyTransform;
-}
-
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr removeOutliersFromInputCloud(
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloud, int int_param, double double_param,
+  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloud, int int_param, double double_param,
   OutlierRemovalType outlier_removal_type)
 {
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr filteredCloud(new pcl::PointCloud<pcl::PointXYZRGB>());
@@ -171,7 +119,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr removeOutliersFromInputCloud(
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr removeOutliersFromInputCloud(
-  pcl::PointCloud<pcl::PointXYZ>::Ptr inputCloud, int int_param, double double_param,
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr inputCloud, int int_param, double double_param,
   OutlierRemovalType outlier_removal_type)
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud(new pcl::PointCloud<pcl::PointXYZ>());

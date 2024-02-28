@@ -19,6 +19,9 @@
 // OMPL GEOMETRIC
 #include <ompl/geometric/planners/prm/PRMstar.h>
 
+#include <octomap_msgs/msg/octomap.hpp>
+#include <octomap_msgs/conversions.h>
+
 #include <fcl/config.h>
 #include <fcl/geometry/octree/octree.h>
 #include <fcl/math/constants.h>

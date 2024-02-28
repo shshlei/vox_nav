@@ -16,30 +16,30 @@
 #define VOX_NAV_PLANNING__RRT__InformedSGCP_HPP_
 
 #include <rclcpp/rclcpp.hpp>
+
 #include <visualization_msgs/msg/marker_array.hpp>
 
+#include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/astar_search.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graphviz.hpp>
 #include <boost/graph/random.hpp>
 #include <boost/random.hpp>
-#include <boost/graph/graphviz.hpp>
 
 // OMPL BASE
-#include <ompl/base/State.h>
 #include <ompl/base/Cost.h>
-#include <ompl/base/Planner.h>
 #include <ompl/base/OptimizationObjective.h>
+#include <ompl/base/Planner.h>
+#include <ompl/base/State.h>
 #include <ompl/base/samplers/informed/RejectionInfSampler.h>
 
-// OMPL CONTROL 
-#include <ompl/control/SpaceInformation.h>
-#include <ompl/control/PathControl.h>
+// OMPL CONTROL
 #include <ompl/control/DirectedControlSampler.h>
+#include <ompl/control/PathControl.h>
+#include <ompl/control/SpaceInformation.h>
 
 // OMPL DATASTUCTURE
 #include <ompl/datastructures/NearestNeighbors.h>
-
 #include <ompl/tools/config/SelfConfig.h>
 #include <ompl/util/GeometricEquations.h>
 

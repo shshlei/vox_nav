@@ -15,23 +15,25 @@
 #ifndef VOX_NAV_PLANNING__PLUGINS__ELEVATION_CONTROL_PLANNER_HPP_
 #define VOX_NAV_PLANNING__PLUGINS__ELEVATION_CONTROL_PLANNER_HPP_
 
-#include "vox_nav_planning/planner_core.hpp"
 #include "vox_nav_planning/native_planners/InformedSGCP.hpp"
 #include "vox_nav_planning/native_planners/LQRPlanner.hpp"
 #include "vox_nav_planning/native_planners/LQRRRTStar.hpp"
 #include "vox_nav_planning/native_planners/RRTStarF.hpp"
-#include <vox_nav_utilities/elevation_state_space.hpp>
+#include "vox_nav_planning/planner_core.hpp"
 
-#include <pcl/point_types.h>
+#include <vox_nav_utilities/elevation_state_space.hpp>
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
+
 #include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 // OMPL BASE
+#include <ompl/base/OptimizationObjective.h>
 #include <ompl/base/Planner.h>
+#include <ompl/base/SpaceInformation.h>
 #include <ompl/base/State.h>
 #include <ompl/base/StateSpace.h>
-#include <ompl/base/SpaceInformation.h>
 #include <ompl/base/ValidStateSampler.h>
-#include <ompl/base/OptimizationObjective.h>
 #include <ompl/base/spaces/RealVectorBounds.h>
 
 /*
@@ -43,6 +45,14 @@
 */
 
 // OMPL CONTROL
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "sensor_msgs/point_cloud2_iterator.hpp"
+
+#include <fcl/config.h>
+#include <fcl/geometry/octree/octree.h>
+#include <fcl/math/constants.h>
+#include <fcl/narrowphase/collision.h>
+#include <fcl/narrowphase/collision_object.h>
 #include <ompl/control/SimpleDirectedControlSampler.h>
 #include <ompl/control/SimpleSetup.h>
 #include <ompl/control/planners/PlannerIncludes.h>
@@ -53,15 +63,6 @@
 #include <ompl/control/planners/sst/SST.h>
 #include <ompl/control/planners/syclop/SyclopRRT.h>
 #include <ompl/control/spaces/RealVectorControlSpace.h>
-
-#include "geometry_msgs/msg/pose_array.hpp"
-#include "sensor_msgs/point_cloud2_iterator.hpp"
-
-#include <fcl/config.h>
-#include <fcl/geometry/octree/octree.h>
-#include <fcl/math/constants.h>
-#include <fcl/narrowphase/collision.h>
-#include <fcl/narrowphase/collision_object.h>
 
 #include <memory>
 #include <string>
@@ -89,9 +90,7 @@ public:
    * @brief
    *
    */
-  void initialize(
-    rclcpp::Node * parent,
-    const std::string & plugin_name) override;
+  void initialize(rclcpp::Node * parent) override;
 
   /**
    * @brief Method create the plan from a starting and ending goal.
@@ -136,13 +135,6 @@ public:
   void nodePosesCallback(const geometry_msgs::msg::PoseArray::SharedPtr msg);
 
   /**
-   * @brief Get the Opt Objective object
-   *
-   * @return ompl::base::OptimizationObjectivePtr
-   */
-  ompl::base::OptimizationObjectivePtr getOptimizationObjective();
-
-  /**
    * @brief
    *
    * @param si
@@ -150,14 +142,6 @@ public:
    */
   ompl::base::ValidStateSamplerPtr allocValidStateSampler(
     const ompl::base::SpaceInformation * si);
-
-  /**
-   * @brief Get the Overlayed Start and Goal poses, only x and y are provided for goal ,
-   * but internally planner finds closest valid node on octomap and reassigns goal to this pose
-   *
-   * @return std::vector<geometry_msgs::msg::PoseStamped>
-   */
-  std::vector<geometry_msgs::msg::PoseStamped> getOverlayedStartandGoal() override;
 
   /**
    * @brief
@@ -212,19 +196,7 @@ protected:
   rclcpp::Logger logger_{rclcpp::get_logger("elevation_control_planner")};
   rclcpp::Client<vox_nav_msgs::srv::GetTraversabilityMap>::SharedPtr get_traversability_map_client_;
 
-  // Surfels centers are elevated by node_elevation_distance_, and are stored in this
-  // octomap, this maps is used by planner to sample states that are
-  // strictly laying on ground but not touching. So it constrains the path to be on ground
-  // while it can elevate thorogh ramps or slopes
-  std::shared_ptr<octomap::OcTree> elevated_surfel_octomap_octree_;
-  // it is also required to have orientation information of surfels, they are kept in
-  // elevated_surfel_poses_msg_
-  geometry_msgs::msg::PoseArray::SharedPtr elevated_surfel_poses_msg_;
   pcl::PointCloud<pcl::PointSurfel>::Ptr elevated_surfel_cloud_;
-  geometry_msgs::msg::PoseStamped nearest_elevated_surfel_to_start_;
-  geometry_msgs::msg::PoseStamped nearest_elevated_surfel_to_goal_;
-  std::shared_ptr<fcl::CollisionObjectf> elevated_surfels_collision_object_;
-  ompl::base::OptimizationObjectivePtr octocost_optimization_;
   ompl::base::StateSpacePtr state_space_;
   ompl::control::ControlSpacePtr control_state_space_;
   ompl::control::SimpleSetupPtr control_simple_setup_;
@@ -232,13 +204,11 @@ protected:
   std::shared_ptr<ompl::base::RealVectorBounds> z_bounds_;
   std::shared_ptr<ompl::base::RealVectorBounds> se2_bounds_;
 
-  std::string selected_se2_space_name_;
   ompl::base::ElevationStateSpace::SE2StateType se2_space_type_;
   // curve radius for reeds and dubins only
   double rho_;
 
   // octomap acquired from original PCD map
-  std::shared_ptr<octomap::OcTree> original_octomap_octree_;
   std::shared_ptr<fcl::CollisionObjectf> original_octomap_collision_object_;
   std::shared_ptr<fcl::CollisionObjectf> robot_collision_object_;
   // Better t keep this parameter consistent with map_server, 0.2 is a OK default fo this

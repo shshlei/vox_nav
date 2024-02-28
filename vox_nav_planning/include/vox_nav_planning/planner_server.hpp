@@ -18,10 +18,12 @@
 
 #include "vox_nav_planning/planner_core.hpp"
 #include <vox_nav_msgs/action/compute_path_to_pose.hpp>
+#include <vox_nav_msgs/action/compute_start_to_goal.hpp>
 
 #include <pluginlib/class_loader.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 
+#include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
@@ -31,7 +33,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <unordered_map>
 
 namespace vox_nav_planning
 {
@@ -40,42 +41,45 @@ class PlannerServer : public rclcpp::Node
 public:
   using ComputePathToPose = vox_nav_msgs::action::ComputePathToPose;
   using GoalHandleComputePathToPose = rclcpp_action::ServerGoalHandle<ComputePathToPose>;
-
-  using PlannerMap = std::unordered_map<std::string, vox_nav_planning::PlannerCore::Ptr>;
+  using ComputeStartToGoal = vox_nav_msgs::action::ComputeStartToGoal;
+  using GoalHandleComputeStartToGoal = rclcpp_action::ServerGoalHandle<ComputeStartToGoal>;
 
   PlannerServer();
 
   virtual ~PlannerServer();
 
-  std::vector<geometry_msgs::msg::PoseStamped> getPlan(const geometry_msgs::msg::PoseStamped & start, const geometry_msgs::msg::PoseStamped & goal, const std::string & planner_id);
-
+  // Current Pose To Goal
   rclcpp_action::GoalResponse handle_goal(const rclcpp_action::GoalUUID & uuid, std::shared_ptr<const ComputePathToPose::Goal> goal);
 
   rclcpp_action::CancelResponse handle_cancel(const std::shared_ptr<GoalHandleComputePathToPose> goal_handle);
 
   void handle_accepted(const std::shared_ptr<GoalHandleComputePathToPose> goal_handle);
 
+  // Start To Goal
+  rclcpp_action::GoalResponse handle_goal_2(const rclcpp_action::GoalUUID & uuid, std::shared_ptr<const ComputeStartToGoal::Goal> goal);
+
+  rclcpp_action::CancelResponse handle_cancel_2(const std::shared_ptr<GoalHandleComputeStartToGoal> goal_handle);
+
+  void handle_accepted_2(const std::shared_ptr<GoalHandleComputeStartToGoal> goal_handle);
+
 protected:
+  std::vector<geometry_msgs::msg::PoseStamped> getPlan(const geometry_msgs::msg::PoseStamped & start, const geometry_msgs::msg::PoseStamped & goal);
 
   // Our action server implements the ComputePathToPose action
   rclcpp_action::Server<ComputePathToPose>::SharedPtr action_server_;
 
   void computePlan(const std::shared_ptr<GoalHandleComputePathToPose> goal_handle);
 
+  rclcpp_action::Server<ComputeStartToGoal>::SharedPtr action_server_2_;
+
+  void computePlan_2(const std::shared_ptr<GoalHandleComputeStartToGoal> goal_handle);
+
   // Planner
-  PlannerMap planners_;
+  vox_nav_planning::PlannerCore::Ptr planner_;
 
   pluginlib::ClassLoader<vox_nav_planning::PlannerCore> pc_loader_;
 
-  std::string planner_id_;
-
   std::string planner_type_;
-
-  double max_planner_duration_;
-
-  std::string planner_ids_concat_;
-
-  double expected_planner_frequency_;
 
   // Clock
   rclcpp::Clock steady_clock_{RCL_STEADY_TIME};

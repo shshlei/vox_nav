@@ -14,26 +14,27 @@
 
 #ifndef VOX_NAV_PLANNING__PLUGINS__CONTROL_PLANNERS_BENCHMARKING_HPP_
 #define VOX_NAV_PLANNING__PLUGINS__CONTROL_PLANNERS_BENCHMARKING_HPP_
-#pragma once
 
 // ROS
+#include <rclcpp/rclcpp.hpp>
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
+#include <vox_nav_utilities/elevation_state_space.hpp>
+#include <vox_nav_utilities/pcl_helpers.hpp>
+#include <vox_nav_utilities/tf_helpers.hpp>
+
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <nav_msgs/msg/path.hpp>
-#include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
-#include <vox_nav_utilities/elevation_state_space.hpp>
-#include <vox_nav_utilities/pcl_helpers.hpp>
-#include <vox_nav_utilities/tf_helpers.hpp>
 // PCL
 #include <pcl/common/common.h>
+#include <pcl/common/io.h>
 #include <pcl/common/transforms.h>
 #include <pcl/conversions.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/common/io.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 // OMPL GEOMETRIC
@@ -57,20 +58,20 @@
 #include <ompl/geometric/planners/rrt/TRRT.h>
 #include <ompl/geometric/planners/sst/SST.h>
 // OMPL CONTROL
-#include "ompl/control/spaces/RealVectorControlSpace.h"
 #include "ompl/control/SimpleSetup.h"
-#include "ompl/control/planners/sst/SST.h"
-#include "ompl/control/planners/rrt/RRT.h"
+#include "ompl/control/planners/PlannerIncludes.h"
 #include "ompl/control/planners/est/EST.h"
 #include "ompl/control/planners/kpiece/KPIECE1.h"
 #include "ompl/control/planners/pdst/PDST.h"
+#include "ompl/control/planners/rrt/RRT.h"
+#include "ompl/control/planners/sst/SST.h"
 #include "ompl/control/planners/syclop/SyclopRRT.h"
-#include "ompl/control/planners/PlannerIncludes.h"
-#include "vox_nav_planning/native_planners/RRTStarF.hpp"
+#include "ompl/control/spaces/RealVectorControlSpace.h"
+#include "vox_nav_planning/native_planners/CostTrustKinoPlanner.hpp"
+#include "vox_nav_planning/native_planners/InformedSGCP.hpp"
 #include "vox_nav_planning/native_planners/LQRPlanner.hpp"
 #include "vox_nav_planning/native_planners/LQRRRTStar.hpp"
-#include "vox_nav_planning/native_planners/InformedSGCP.hpp"
-#include "vox_nav_planning/native_planners/CostTrustKinoPlanner.hpp"
+#include "vox_nav_planning/native_planners/RRTStarF.hpp"
 // OMPL BASE
 #include <ompl/base/OptimizationObjective.h>
 #include <ompl/base/objectives/MaximizeMinClearanceObjective.h>
@@ -84,16 +85,18 @@
 #include <ompl/base/spaces/SE3StateSpace.h>
 #include <ompl/tools/benchmark/Benchmark.h>
 // OCTOMAP
+#include <octomap_msgs/msg/octomap.hpp>
+
 #include <octomap/octomap.h>
 #include <octomap/octomap_utils.h>
 #include <octomap_msgs/conversions.h>
-#include <octomap_msgs/msg/octomap.hpp>
 // FCL
-#include <fcl/config.h>
 #include "fcl/geometry/octree/octree.h"
 #include "fcl/math/constants.h"
 #include "fcl/narrowphase/collision.h"
 #include "fcl/narrowphase/collision_object.h"
+
+#include <fcl/config.h>
 // STL
 #include <iostream>
 #include <map>
@@ -111,7 +114,8 @@ struct GroundRobotPose
   double y;
   double z;
   double yaw;
-  GroundRobotPose() : x(0.0), y(0.0), z(0.0), yaw(0.0)
+  GroundRobotPose()
+  : x(0.0), y(0.0), z(0.0), yaw(0.0)
   {
   }
 };
@@ -126,7 +130,8 @@ struct SEBounds
   double maxz;
   double minyaw;
   double maxyaw;
-  SEBounds() : minx(0.0), maxx(0.0), miny(0.0), maxy(0.0), minz(0.0), maxz(0.0), minyaw(0.0), maxyaw(0.0)
+  SEBounds()
+  : minx(0.0), maxx(0.0), miny(0.0), maxy(0.0), minz(0.0), maxz(0.0), minyaw(0.0), maxyaw(0.0)
   {
   }
 };
@@ -134,7 +139,7 @@ struct SEBounds
 class CarControlPlannersBenchMarking : public rclcpp::Node
 {
 private:
-  rclcpp::Logger logger_{ rclcpp::get_logger("car_control_planners_benchmark") };
+  rclcpp::Logger logger_{rclcpp::get_logger("car_control_planners_benchmark")};
   std::string selected_state_space_;  // se2 ? se3
   SEBounds se_bounds_;                // struct for keeping things clean
   ompl::base::StateSpacePtr state_space_;
@@ -184,9 +189,6 @@ private:
 
   std::mutex octomap_mutex_;
 
-  std::shared_ptr<octomap::OcTree> elevated_surfel_octomap_octree_;
-  std::shared_ptr<fcl::CollisionObjectf> elevated_surfels_collision_object_;
-  geometry_msgs::msg::PoseArray::SharedPtr elevated_surfel_poses_msg_;
   pcl::PointCloud<pcl::PointSurfel>::Ptr elevated_surfel_cloud_;
   geometry_msgs::msg::PoseStamped nearest_elevated_surfel_to_start_;
   geometry_msgs::msg::PoseStamped nearest_elevated_surfel_to_goal_;
@@ -226,16 +228,8 @@ public:
    * @param duration
    * @param result
    */
-  void propagate(const ompl::control::SpaceInformation* si, const ompl::base::State* start,
-                 const ompl::control::Control* control, const double duration, ompl::base::State* result);
-
-  /**
-   * @brief
-   *
-   * @param si
-   * @return ompl::base::ValidStateSamplerPtr
-   */
-  ompl::base::ValidStateSamplerPtr allocValidStateSampler(const ompl::base::SpaceInformation* si);
+  void propagate(const ompl::control::SpaceInformation * si, const ompl::base::State * start,
+    const ompl::control::Control * control, const double duration, ompl::base::State * result);
 
   /**
    * @brief
@@ -244,7 +238,7 @@ public:
    * @return true
    * @return false
    */
-  bool isStateValid(const ompl::base::State* state);
+  bool isStateValid(const ompl::base::State * state);
 
   /**
    * @brief publish sample plan from bencmarking as marker array into RVIZ
@@ -261,13 +255,6 @@ public:
   std_msgs::msg::ColorRGBA getColorByIndex(int index);
 
   /**
-   * @brief Get the Opt Objective object
-   *
-   * @return ompl::base::OptimizationObjectivePtr
-   */
-  ompl::base::OptimizationObjectivePtr getOptimizationObjective();
-
-  /**
    * @brief Get the Ranged Random object, return a random double in min max
    * range
    *
@@ -277,47 +264,38 @@ public:
    */
   double getRangedRandom(double min, double max);
 
-  void initializeSelectedControlPlanner(ompl::base::PlannerPtr& planner, const std::string& selected_planner_name,
-                                        const ompl::control::SpaceInformationPtr& si, const rclcpp::Logger& logger)
+  void initializeSelectedControlPlanner(ompl::base::PlannerPtr & planner, const std::string & selected_planner_name,
+    const ompl::control::SpaceInformationPtr & si, const rclcpp::Logger & logger)
   {
-    if (selected_planner_name == std::string("RRT"))
-    {
+    if (selected_planner_name == std::string("RRT")) {
       planner = ompl::base::PlannerPtr(new ompl::control::RRT(si));
     }
-    else if (selected_planner_name == std::string("RRTStarF"))
-    {
+    else if (selected_planner_name == std::string("RRTStarF")) {
       planner = ompl::base::PlannerPtr(new ompl::control::RRTStarF(si));
     }
-    else if (selected_planner_name == std::string("LQRPlanner"))
-    {
+    else if (selected_planner_name == std::string("LQRPlanner")) {
       planner = ompl::base::PlannerPtr(new ompl::control::LQRPlanner(si));
     }
-    else if (selected_planner_name == std::string("LQRRRTStar"))
-    {
+    else if (selected_planner_name == std::string("LQRRRTStar")) {
       planner = ompl::base::PlannerPtr(new ompl::control::LQRRRTStar(si));
     }
-    else if (selected_planner_name == std::string("SST"))
-    {
+    else if (selected_planner_name == std::string("SST")) {
       planner = ompl::base::PlannerPtr(new ompl::control::SST(si));
     }
-    else if (selected_planner_name == std::string("EST"))
-    {
+    else if (selected_planner_name == std::string("EST")) {
       planner = ompl::base::PlannerPtr(new ompl::control::EST(si));
     }
-    else if (selected_planner_name == std::string("KPIECE1"))
-    {
+    else if (selected_planner_name == std::string("KPIECE1")) {
       planner = ompl::base::PlannerPtr(new ompl::control::KPIECE1(si));
     }
-    else if (selected_planner_name == std::string("InformedSGCP"))
-    {
+    else if (selected_planner_name == std::string("InformedSGCP")) {
       planner = ompl::base::PlannerPtr(new ompl::control::InformedSGCP(si));
       planner->as<ompl::control::InformedSGCP>()->setMinDistBetweenVertices(0.05);
       planner->as<ompl::control::InformedSGCP>()->setGoalBias(0.25);
       planner->as<ompl::control::InformedSGCP>()->setSolveControlGraph(true);
       planner->as<ompl::control::InformedSGCP>()->setNumThreads(12);
     }
-    else if (selected_planner_name == std::string("CostTrustKinoPlanner"))
-    {
+    else if (selected_planner_name == std::string("CostTrustKinoPlanner")) {
       planner = ompl::base::PlannerPtr(new ompl::control::CostTrustKinoPlanner(si));
       planner->as<ompl::control::CostTrustKinoPlanner>()->setNumThreads(12);
       planner->as<ompl::control::CostTrustKinoPlanner>()->setMinNumberOfBranchesToExtend(5);
@@ -325,12 +303,10 @@ public:
       planner->as<ompl::control::CostTrustKinoPlanner>()->setMaxNumberOfFrontierNodes(50);
       planner->as<ompl::control::CostTrustKinoPlanner>()->setMinDistanceBetweenNodes(0.1);
     }
-    else if (selected_planner_name == std::string("PDST"))
-    {
+    else if (selected_planner_name == std::string("PDST")) {
       planner = ompl::base::PlannerPtr(new ompl::control::PDST(si));
     }
-    else
-    {
+    else {
       RCLCPP_WARN(logger, "Selected planner is not Found in available planners, using the default planner: RRTStarF");
       planner = ompl::base::PlannerPtr(new ompl::control::RRTStarF(si));
     }

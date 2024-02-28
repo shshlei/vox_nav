@@ -18,116 +18,73 @@
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2/LinearMath/Quaternion.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
 #include <memory>
 #include <string>
-#include <vector>
-#include <limits>
 
 namespace vox_nav_utilities
 {
-/**
- * @brief Transform a PoseStamped from one frame to another while catching exceptions
- *
- * Also returns immediately if the frames are equal.
- * @param tf Smart pointer to TFListener
- * @param frame Frame to transform the pose into
- * @param in_pose Pose to transform
- * @param out_pose Place to store the resulting transformed pose
- * @return True if successful transform
- */
+struct RigidBodyTransformation
+{
+  Eigen::Vector3d translation_{0.0, 0.0, 0.0};
+
+  // intrinsic rotation (opposite from the ROS convention), order X-Y-Z
+  Eigen::Vector3d rpyIntrinsic_{0.0, 0.0, 0.0};
+};
+
+enum class XYZ : int
+{
+  X,
+  Y,
+  Z
+};
+
+// Transform a PoseStamped from one frame to another while catching exceptions
 bool transformPose(const std::shared_ptr<tf2_ros::Buffer> & tf, const std::string & frame,
   const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose,
   rclcpp::Duration & transform_tolerance);
 
-/**
- * @brief Get the Current Pose object
- *
- * @param global_pose
- * @param tf_buffer
- * @param global_frame
- * @param robot_frame
- * @param transform_timeout
- * @return true
- * @return false
- */
+// Get the Current Pose object
 bool getCurrentPose(geometry_msgs::msg::PoseStamped & global_pose, tf2_ros::Buffer & tf_buffer,
   const std::string & global_frame = "map", const std::string & robot_frame = "base_link",
   const double transform_timeout = 0.1);
 
-/**
- * @brief Get the Euclidian Dist Between Poses object
- *
- * @param a
- * @param b
- * @return double
- */
-double getEuclidianDistBetweenPoses(const geometry_msgs::msg::PoseStamped & a, const geometry_msgs::msg::PoseStamped & b);
-
-/**
- * @brief Get the Euclidian Dist Between Poses object
- *
- * @param a
- * @param b
- * @return double
- */
+// Get the Euclidian Dist Between Poses object
 double getEuclidianDistBetweenPoses(const geometry_msgs::msg::Pose & a, const geometry_msgs::msg::Pose & b);
 
-/**
- * @brief Get the Euclidian Dist Between Poses object
- *
- * @param a
- * @param b
- * @return double
- */
+// Get the Euclidian Dist Between Poses object
+double getEuclidianDistBetweenPoses(const geometry_msgs::msg::PoseStamped & a, const geometry_msgs::msg::PoseStamped & b);
+
+// Get the Euclidian Dist Between Poses object
 double getEuclidianDistBetweenPoints(const geometry_msgs::msg::Point & a, const geometry_msgs::msg::Point & b);
 
-/**
- * @brief Provide tf2::Quaternion and get roll pitch yaw
- *
- * @param q
- * @param roll
- * @param pitch
- * @param yaw
- */
+// Provide tf2::Quaternion and get roll pitch yaw
 void getRPYfromTFQuaternion(const tf2::Quaternion & q, double & roll, double & pitch, double & yaw);
 
-/**
- * @brief Get the Quaternionfrom R P Y object
- *
- * @param roll
- * @param pitch
- * @param yaw
- * @return tf2::Quaternion
- */
+// Get the Quaternionfrom R P Y object
 tf2::Quaternion getTFQuaternionfromRPY(const double roll, const double pitch, const double yaw);
 
-/**
- * @brief Provide geometry_msgs::msg::Quaternion and get roll pitch yaw
- *
- * @param q_msg
- * @param roll
- * @param pitch
- * @param yaw
- */
+// Provide geometry_msgs::msg::Quaternion and get roll pitch yaw
 void getRPYfromMsgQuaternion(const geometry_msgs::msg::Quaternion & q_msg, double & roll, double & pitch, double & yaw);
 
-/**
- * @brief Get the Msg Quaternionfrom R P Y object
- *
- * @param roll
- * @param pitch
- * @param yaw
- * @return geometry_msgs::msg::Quaternion
- */
+// Get the Msg Quaternionfrom R P Y object
 geometry_msgs::msg::Quaternion getMsgQuaternionfromRPY(const double roll, const double pitch, const double yaw);
 
+// Get the Rotation Matrix object
+Eigen::Matrix3d getRotationMatrix(double angle, XYZ axis);
+
+// Get the Rigid Body Transform object
+Eigen::Affine3d getRigidBodyTransform(const Eigen::Vector3d & translation, const Eigen::Vector3d & intrinsicRpy);
+
+/*
 const double EPSILON = std::numeric_limits<double>::epsilon();
 
 std::tuple<int, int, int> convert_to_rgb(double minval, double maxval, double val,
@@ -137,6 +94,7 @@ double euclidean_distance(const std::tuple<int, int, int> & c1, const std::tuple
 
 double convert_to_value(const std::tuple<int, int, int> & rgb, double minval, double maxval,
   const std::vector<std::tuple<int, int, int>> & colors);
+*/
 
 }  // namespace vox_nav_utilities
 

@@ -355,8 +355,7 @@ void OSMMapManager::preProcessPCDMap()
 
   Eigen::Affine3d bt = vox_nav_utilities::getRigidBodyTransform(
     pcd_map_transform_matrix_.translation_,
-    pcd_map_transform_matrix_.rpyIntrinsic_,
-    get_logger());
+    pcd_map_transform_matrix_.rpyIntrinsic_);
   auto final_tr = tf2::eigenToTransform(bt);
 
   // Apply user requested transform (if any) to the point clouds

@@ -16,17 +16,18 @@
 #define VOX_NAV_PLANNING__NATIVE_PLANNERS__COST_TRUST_KINO_PLANNER_HPP_
 
 #include <rclcpp/rclcpp.hpp>
+
 #include <visualization_msgs/msg/marker_array.hpp>
 
 // OMPL BASE
-#include <ompl/base/State.h>
 #include <ompl/base/Cost.h>
-#include <ompl/base/Planner.h>
 #include <ompl/base/OptimizationObjective.h>
+#include <ompl/base/Planner.h>
+#include <ompl/base/State.h>
 
-// OMPL CONTROL 
-#include <ompl/control/SpaceInformation.h>
+// OMPL CONTROL
 #include <ompl/control/PathControl.h>
+#include <ompl/control/SpaceInformation.h>
 
 // OMPL DATASTUCTURE
 #include <ompl/datastructures/NearestNeighbors.h>

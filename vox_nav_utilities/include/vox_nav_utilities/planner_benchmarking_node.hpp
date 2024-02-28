@@ -16,7 +16,7 @@
 #define VOX_NAV_UTILITIES__PLANNER_BENCHMARKING_HPP_
 
 // ROS
-#include "vox_nav_msgs/srv/get_traversability_map.hpp"
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/vector3.hpp>
@@ -74,50 +74,6 @@ struct SEBounds
 
 class PlannerBenchMarking : public rclcpp::Node
 {
-private:
-  std::string selected_state_space_;  // se2 ? se3
-  SEBounds se_bounds_;                // struct for keeping things clean
-  std::shared_ptr<ompl::base::RealVectorBounds> ompl_se_bounds_;
-  ompl::base::StateSpacePtr state_space_;
-
-  ompl::base::SpaceInformationPtr si;
-
-  std::vector<std::string> selected_planners_;
-  std::string results_output_dir_;
-  std::string results_file_regex_;
-  double octomap_voxel_size_;
-  double planner_timeout_;
-  // Only used for REEDS or DUBINS
-  double min_turning_radius_;
-  double goal_tolerance_;
-  double min_euclidean_dist_start_to_goal_;
-  int interpolation_parameter_;
-  int batch_size_;
-  int epochs_;
-  int max_memory_;
-  bool publish_a_sample_bencmark_;
-  std::string sample_bencmark_plans_topic_;
-
-  GroundRobotPose start_;
-  GroundRobotPose goal_;
-  geometry_msgs::msg::Vector3 robot_body_dimensions_;
-
-  std::shared_ptr<octomap::OcTree> original_octomap_octree_;
-  std::shared_ptr<fcl::CollisionObjectf> original_octomap_collision_object_;
-  std::shared_ptr<fcl::CollisionObjectf> robot_collision_object_;
-  // Publishers for the path
-
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
-    plan_publisher_;
-  rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr
-    start_goal_poses_publisher_;
-
-  rclcpp::Client<vox_nav_msgs::srv::GetTraversabilityMap>::SharedPtr
-    get_traversability_map_client_;
-  rclcpp::Node::SharedPtr get_map_client_node_;
-
-  std::mutex octomap_mutex_;
-
 public:
   volatile bool is_map_ready_;
   /**
@@ -211,6 +167,70 @@ public:
    * @return double
    */
   double getRangedRandom(double min, double max);
+
+private:
+  std::string selected_state_space_;  // se2 ? se3
+
+  SEBounds se_bounds_;                // struct for keeping things clean
+
+  std::shared_ptr<ompl::base::RealVectorBounds> ompl_se_bounds_;
+
+  ompl::base::StateSpacePtr state_space_;
+
+  ompl::base::SpaceInformationPtr si;
+
+  std::vector<std::string> selected_planners_;
+
+  std::string results_output_dir_;
+
+  std::string results_file_regex_;
+
+  double octomap_voxel_size_;
+
+  double planner_timeout_;
+
+  // Only used for REEDS or DUBINS
+  double min_turning_radius_;
+
+  double goal_tolerance_;
+
+  double min_euclidean_dist_start_to_goal_;
+
+  int interpolation_parameter_;
+
+  int batch_size_;
+
+  int epochs_;
+
+  int max_memory_;
+
+  bool publish_a_sample_bencmark_;
+
+  std::string sample_bencmark_plans_topic_;
+
+  GroundRobotPose start_;
+
+  GroundRobotPose goal_;
+
+  geometry_msgs::msg::Vector3 robot_body_dimensions_;
+
+  std::shared_ptr<octomap::OcTree> original_octomap_octree_;
+
+  std::shared_ptr<fcl::CollisionObjectf> original_octomap_collision_object_;
+
+  std::shared_ptr<fcl::CollisionObjectf> robot_collision_object_;
+  // Publishers for the path
+
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr plan_publisher_;
+
+  rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr start_goal_poses_publisher_;
+
+  rclcpp::Client<vox_nav_msgs::srv::GetTraversabilityMap>::SharedPtr get_traversability_map_client_;
+
+  rclcpp::Node::SharedPtr get_map_client_node_;
+
+  std::mutex octomap_mutex_;
+
 };
 }  // namespace vox_nav_utilities
 

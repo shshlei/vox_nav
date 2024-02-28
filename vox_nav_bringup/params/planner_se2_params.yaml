@@ -1,0 +1,21 @@
+vox_nav_planner_server_rclcpp_node:
+  ros__parameters:
+    planner_name: "RRTstar"              # PRMstar,LazyPRMstar,RRTstar,RRTsharp,RRTXstatic,InformedRRTstar,BITstar, 
+                                                       # ABITstar,AITstar,CForest,LBTRRT,SST,TRRT,SPARS,SPARStwo,FMT,AnytimePathShortening
+    planner_timeout: 10.0
+    interpolation_parameter: 25                         # set to 0 if you wanna disable interpolating and smooting, otherwise 25 is a good default value                    
+    robot_body_dimens:
+      x: 1.2
+      y: 1.2
+      z: 0.8
+    #robot_mesh_path: "package://botanbot_description/meshes/base_simplified.stl" # leave empty if you do not have one, robot_mesh_path: ""
+    robot_mesh_path: ""
+    planner_type: "vox_nav_planning::SE2Planner"         # CForest: Reccomended
+    se2_space: "REEDS"                             # "DUBINS","REEDS", "SE2" ### PS. Use DUBINS OR REEDS for Ackermann
+    z_elevation: 1.5                               # Elevation of robot from ground plane, robot should not collide with plane                                      
+    rho: 2.5                                       # Curve radius form reeds and dubins only
+    state_space_boundries: 
+      minx: -100.0
+      maxx: 100.0
+      miny: -100.0
+      maxy: 100.0

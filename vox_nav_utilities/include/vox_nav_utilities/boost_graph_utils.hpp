@@ -18,19 +18,15 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/astar_search.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/graph/graphviz.hpp>
-#include <boost/graph/random.hpp>
-#include <boost/random.hpp>
 
 #include <pcl/point_types.h>
 
-#include <memory>
-#include <mutex>
+#include <cmath>
+#include <string>
 #include <utility>
 
 namespace vox_nav_utilities
 {
-
 // Boost graph stuff for super voxel clustering based A* search
 struct VertexProperty
 {
@@ -38,7 +34,9 @@ struct VertexProperty
   std::string name;
   pcl::PointXYZRGBA point;
 };
+
 typedef float Cost;
+
 typedef boost::adjacency_list<
   boost::setS,                                  // edge
   boost::vecS,                                  // vertex
@@ -46,10 +44,15 @@ typedef boost::adjacency_list<
   VertexProperty,                               // vertex property
   boost::property<boost::edge_weight_t, Cost>>  // edge property
   GraphT;
+
 typedef boost::property_map<GraphT, boost::edge_weight_t>::type WeightMap;
+
 typedef GraphT::vertex_descriptor vertex_descriptor;
+
 typedef GraphT::edge_descriptor edge_descriptor;
+
 typedef GraphT::vertex_iterator vertex_iterator;
+
 typedef std::pair<int, int> edge;
 
 // euclidean distance heuristic
@@ -58,10 +61,12 @@ class distance_heuristic : public boost::astar_heuristic<Graph, CostType>
 {
 public:
   typedef typename boost::graph_traits<Graph>::vertex_descriptor Vertex;
+
   distance_heuristic(SuperVoxelClustersPtr sc, Vertex goal_vertex, Graph g)
   : supervoxel_clusters_(sc), goal_vertex_(goal_vertex), g_(g)
   {
   }
+
   CostType operator()(Vertex u)
   {
     auto u_vertex_label = g_[u].label;
@@ -76,13 +81,16 @@ public:
 
 private:
   SuperVoxelClustersPtr supervoxel_clusters_;
+
   Vertex goal_vertex_;
+
   Graph g_;
 };
 
 // exception for termination
 struct FoundGoal
 {};
+
 template <class Vertex>
 class custom_goal_visitor : public boost::default_astar_visitor
 {
@@ -91,6 +99,7 @@ public:
   : goal_vertex_(goal_vertex), num_visits_(num_visits)
   {
   }
+
   template <class Graph>
   void examine_vertex(Vertex u, Graph & g)
   {
@@ -102,6 +111,7 @@ public:
 
 private:
   Vertex goal_vertex_;
+
   int * num_visits_;
 };
 
@@ -114,6 +124,7 @@ public:
   : goal_vertex_(goal_vertex), num_visits_(num_visits)
   {
   }
+
   template <class Graph>
   void examine_vertex(Vertex u, Graph & g)
   {
@@ -125,6 +136,7 @@ public:
 
 private:
   Vertex goal_vertex_;
+
   int * num_visits_;
 };
 

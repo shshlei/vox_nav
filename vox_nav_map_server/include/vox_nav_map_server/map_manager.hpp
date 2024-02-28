@@ -214,9 +214,7 @@ protected:
     non_traversable_pointcloud_publisher_;
   // publish sampled node poses for planner to use.
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr octomap_markers_publisher_;
-  // publish sampled node poses for planner to use.
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
-    elevated_surfel_octomap_markers_publisher_;
+
   // robot_localization package provides a service to convert
   // lat,long,al GPS cooordinates to x,y,z map points
   rclcpp::Client<robot_localization::srv::FromLL>::SharedPtr robot_localization_fromLL_client_;
@@ -225,27 +223,19 @@ protected:
   // reusable octomap point loud message, dont need to recreate each time we publish
   sensor_msgs::msg::PointCloud2::SharedPtr octomap_pointcloud_msg_;
   // reusable octomap point loud message, dont need to recreate each time we publish
-  sensor_msgs::msg::PointCloud2::SharedPtr elevated_surfels_pointcloud_msg_;
+  sensor_msgs::msg::PointCloud2::SharedPtr elevated_surfel_pointcloud_msg_;
   // reusable octomap point loud message, dont need to recreate each time we publish
   sensor_msgs::msg::PointCloud2::SharedPtr traversable_pointcloud_msg_;
   // reusable octomap point loud message, dont need to recreate each time we publish
   sensor_msgs::msg::PointCloud2::SharedPtr non_traversable_pointcloud_msg_;
   // reusable octomap marker array message, used to publish occupied nodes onlyu
   visualization_msgs::msg::MarkerArray::SharedPtr original_octomap_markers_msg_;
-  // reusable octomap marker array message, used to publish occupied nodes onlyu
-  visualization_msgs::msg::MarkerArray::SharedPtr elevated_surfel_octomap_markers_msg_;
+
   // octomap acquired from original PCD map
   octomap_msgs::msg::Octomap::SharedPtr original_octomap_msg_;
 
   octomap_msgs::msg::Octomap::SharedPtr collision_octomap_msg_;
-  // Surfels centers are elevated by node_elevation_distance_, and are stored in this
-  // octomap, this maps is used by planner to sample states that are
-  // strictly laying on ground but not touching. So it constrains the path to be on ground
-  // while it can elevate thorogh ramps or slopes
-  octomap_msgs::msg::Octomap::SharedPtr elevated_surfel_octomap_msg_;
-  // it is also required to have orientation information of surfels, they are kept in
-  // elevated_surfel_poses_msg_
-  geometry_msgs::msg::PoseArray::SharedPtr elevated_surfel_poses_msg_;
+
   // we read gps coordinates of map from yaml
   vox_nav_msgs::msg::OrientedNavSatFix::SharedPtr pcd_map_gps_pose_;
   // otree object to read and store binary octomap from disk

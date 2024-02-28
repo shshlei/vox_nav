@@ -24,20 +24,12 @@ from launch.actions import DeclareLaunchArgument
 def generate_launch_description():
     share_dir = get_package_share_directory("vox_nav_map_server")
 
-    params = LaunchConfiguration("params")
-    localization_params = LaunchConfiguration("localization_params")
-
-    declare_params = DeclareLaunchArgument(
-        "params",
-        default_value=os.path.join(share_dir, "config", "vox_nav_uneven_world_params.yaml"),
-        description="Path to the vox_nav parameters file.",
+    map_params = LaunchConfiguration("map_params")
+    declare_map_params = DeclareLaunchArgument(
+        "map_params", default_value=os.path.join(share_dir, "config", "map_exp_params.yaml"),
+        description="Path to the vox_nav map parameters file.",
     )
-
-    declare_localization_params = DeclareLaunchArgument(
-        "localization_params",
-        default_value=os.path.join(share_dir, "config", "rl_sim_no_map.yaml"),
-        description="Path to the localization parameters file.",
-    )
+    rviz_config_file = os.path.join(share_dir, 'config', 'rviz2.rviz')
 
     map_server_node = Node(
         package="vox_nav_map_server",
@@ -45,13 +37,21 @@ def generate_launch_description():
         name="vox_nav_map_server_rclcpp_node",
         namespace="",
         output="screen",
-        # prefix=['xterm -e gdb -ex run --args'],
-        parameters=[params],
+        parameters=[map_params],
+    )
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config_file],
+        output='screen'
     )
 
     return LaunchDescription(
         [
-            declare_params,
+            declare_map_params,
             map_server_node,
+            rviz_node,
         ]
     )

@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "vox_nav_utilities/gps_waypoint_collector.hpp"
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 
-#include <iostream>
 #include <memory>
 #include <utility>
+#include <functional>
 
 namespace vox_nav_utilities
 {

@@ -15,6 +15,8 @@
 #ifndef VOX_NAV_PLANNING__RRT__LQRRRTSTAR_HPP_
 #define VOX_NAV_PLANNING__RRT__LQRRRTSTAR_HPP_
 
+#include <rclcpp/rclcpp.hpp>
+
 #include "ompl/base/goals/GoalSampleableRegion.h"
 #include "ompl/base/objectives/MaximizeMinClearanceObjective.h"
 #include "ompl/base/objectives/MechanicalWorkOptimizationObjective.h"
@@ -28,6 +30,7 @@
 #include "vox_nav_planning/native_planners/LQRPlanner.hpp"
 #include "vox_nav_planning/planner_core.hpp"
 #include "vox_nav_utilities/elevation_state_space.hpp"
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include "nav_msgs/msg/path.hpp"
 

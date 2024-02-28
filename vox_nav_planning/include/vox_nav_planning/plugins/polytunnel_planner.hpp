@@ -19,41 +19,33 @@
 #include "opencv2/opencv.hpp"
 #include "opencv2/tracking.hpp"
 #include "tf2/transform_datatypes.h"
+#include <tf2_ros/buffer.h>
 #include "tf2_ros/create_timer_interface.h"
 #include "tf2_ros/transform_listener.h"
 #include "vox_nav_planning/planner_core.hpp"
 #include "vox_nav_utilities/elevation_state_space.hpp"
+#include "vox_nav_utilities/tf_helpers.hpp"
 #include "vox_nav_utilities/pcl_helpers.hpp"
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
 
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
-#include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
-
-/*
-#include <pcl/common/common.h>
-#include <pcl/common/io.h>
-#include <pcl/common/transforms.h>
-#include <pcl/conversions.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
-*/
-
-#include <ompl/base/OptimizationObjective.h>
-#include <ompl/base/objectives/MaximizeMinClearanceObjective.h>
-#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
-#include <ompl/base/objectives/StateCostIntegralObjective.h>
-#include <ompl/base/samplers/MaximizeClearanceValidStateSampler.h>
-#include <ompl/base/samplers/ObstacleBasedValidStateSampler.h>
 
 #include <fcl/config.h>
 #include <fcl/geometry/octree/octree.h>
 #include <fcl/math/constants.h>
 #include <fcl/narrowphase/collision.h>
 #include <fcl/narrowphase/collision_object.h>
+#include <ompl/base/OptimizationObjective.h>
+#include <ompl/base/objectives/MaximizeMinClearanceObjective.h>
+#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+#include <ompl/base/objectives/StateCostIntegralObjective.h>
+#include <ompl/base/samplers/MaximizeClearanceValidStateSampler.h>
+#include <ompl/base/samplers/ObstacleBasedValidStateSampler.h>
 
 #include <algorithm>
 #include <memory>
@@ -90,9 +82,7 @@ public:
    * @brief
    *
    */
-  void initialize(
-    rclcpp::Node * parent,
-    const std::string & plugin_name) override;
+  void initialize(rclcpp::Node * parent) override;
 
   /**
    * @brief Method create the plan from a starting and ending goal.
@@ -104,13 +94,6 @@ public:
   std::vector<geometry_msgs::msg::PoseStamped> createPlan(
     const geometry_msgs::msg::PoseStamped & start,
     const geometry_msgs::msg::PoseStamped & goal) override;
-
-  /**
-   * @brief Get the Overlayed Startand Goal object, not implemented
-   *
-   * @return std::vector<geometry_msgs::msg::PoseStamped>
-   */
-  std::vector<geometry_msgs::msg::PoseStamped> getOverlayedStartandGoal() override;
 
   /**
    * @brief Get the selected poitcloud, this should roughly include the strberry rows. Use SelectPointPoblisheer RVIZ pluginn
@@ -387,7 +370,6 @@ protected:
 
   // OMPL utilities used fo path interpolation, to connect rows to each other
   ompl::base::StateSpacePtr state_space_;
-  std::string selected_se2_space_name_;
   // curve radius for reeds and dubins only
   double rho_;
   ompl::base::SpaceInformationPtr state_space_information_;

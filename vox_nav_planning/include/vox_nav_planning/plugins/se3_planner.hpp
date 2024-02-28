@@ -16,15 +16,14 @@
 #define VOX_NAV_PLANNING__PLUGINS__SE2_PLANNER_HPP_
 
 #include "vox_nav_planning/planner_core.hpp"
+
 #include <vox_nav_msgs/srv/get_traversability_map.hpp>
 
 #include <fcl/narrowphase/collision_object.h>
-
+#include <octomap/octomap.h>
 #include <ompl/base/State.h>
 #include <ompl/base/StateSpace.h>
 #include <ompl/base/spaces/RealVectorBounds.h>
-
-#include <octomap/octomap.h>
 
 #include <memory>
 #include <string>
@@ -32,25 +31,18 @@
 
 namespace vox_nav_planning
 {
-
-/**
- * @brief
- *
- */
 class SE3Planner : public vox_nav_planning::PlannerCore
 {
 public:
-  SE3Planner();
+  SE3Planner() = default;
 
-  ~SE3Planner();
+  virtual ~SE3Planner() = default;
 
-  void initialize(rclcpp::Node * parent, const std::string & plugin_name) override;
+  void initialize(rclcpp::Node * parent) override;
 
   std::vector<geometry_msgs::msg::PoseStamped> createPlan(const geometry_msgs::msg::PoseStamped & start, const geometry_msgs::msg::PoseStamped & goal) override;
 
   bool isStateValid(const ompl::base::State * state) override;
-
-  std::vector<geometry_msgs::msg::PoseStamped> getOverlayedStartandGoal() override;
 
   void setupMap() override;
 
@@ -67,15 +59,9 @@ protected:
 
   std::shared_ptr<ompl::base::RealVectorBounds> se3_bounds_;
 
-  // octomap acquired from original PCD map
-  std::shared_ptr<octomap::OcTree> original_octomap_octree_;
-
   std::shared_ptr<fcl::CollisionObjectf> original_octomap_collision_object_;
 
   std::shared_ptr<fcl::CollisionObjectf> robot_collision_object_;
-
-  // Better t keep this parameter consistent with map_server, 0.2 is a OK default fo this
-  double octomap_voxel_size_;
 
   // global mutex to guard octomap
   std::mutex octomap_mutex_;

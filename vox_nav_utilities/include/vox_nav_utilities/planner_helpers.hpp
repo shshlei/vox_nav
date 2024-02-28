@@ -19,7 +19,6 @@
 
 #include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
-#include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 
 #include <visualization_msgs/msg/marker_array.hpp>
@@ -43,63 +42,30 @@
 
 namespace vox_nav_utilities
 {
+void initializeSelectedPlanner(ompl::base::PlannerPtr & planner,
+  const std::string & selected_planner_name, const ompl::base::SpaceInformationPtr & si, const rclcpp::Logger & logger);
 
-/**
- * @brief Get the Nearst Node to given state object
- *
- * @param state
- * @param color_octomap_octree
- * @return geometry_msgs::msg::PoseStamped
- */
-geometry_msgs::msg::PoseStamped getNearstNode(
-  const geometry_msgs::msg::PoseStamped & state,
+// Get the Nearst Node to given state object
+geometry_msgs::msg::PoseStamped getNearstNode(const geometry_msgs::msg::PoseStamped & state,
   const std::shared_ptr<octomap::OcTree> & nodes_octree);
 
-void initializeSelectedPlanner(
-  ompl::base::PlannerPtr & planner,
-  const std::string & selected_planner_name,
-  const ompl::base::SpaceInformationPtr & si,
-  const rclcpp::Logger & logger);
+float distance(float x, float y, float z, const pcl::PointCloud<pcl::PointXYZ>::Ptr & elevated_cloud);
 
-/**
- * @brief populate pcl surfel from geometry msgs Pose
- *
- * @param pose
- * @return pcl::PointSurfel
- */
-pcl::PointSurfel poseMsg2PCLSurfel(const geometry_msgs::msg::PoseStamped & pose_stamped);
+float distance(float x, float y, float z, const pcl::PointCloud<pcl::PointSurfel>::Ptr & elevated_surfel_cloud);
 
-geometry_msgs::msg::PoseStamped PCLSurfel2PoseMsg(const pcl::PointSurfel & surfel);
+void determineValidNearestStartGoal(geometry_msgs::msg::PoseStamped & nearest_valid_start, geometry_msgs::msg::PoseStamped & nearest_valid_goal,
+  const geometry_msgs::msg::PoseStamped & actual_start, const geometry_msgs::msg::PoseStamped & actual_goal, const pcl::PointCloud<pcl::PointXYZ>::Ptr & elevated_cloud);
 
-void determineValidNearestGoalStart(
-  geometry_msgs::msg::PoseStamped & nearest_valid_start,
-  geometry_msgs::msg::PoseStamped & nearest_valid_goal,
-  const geometry_msgs::msg::PoseStamped & actual_start,
-  const geometry_msgs::msg::PoseStamped & actual_goal,
-  const pcl::PointCloud<pcl::PointSurfel>::Ptr & elevated_surfel_cloud);
+void determineValidNearestStartGoal(geometry_msgs::msg::PoseStamped & nearest_valid_start, geometry_msgs::msg::PoseStamped & nearest_valid_goal,
+  const geometry_msgs::msg::PoseStamped & actual_start, const geometry_msgs::msg::PoseStamped & actual_goal, const pcl::PointCloud<pcl::PointSurfel>::Ptr & elevated_surfel_cloud);
 
-void fillSurfelsfromMsgPoses(
-  const geometry_msgs::msg::PoseArray & poses,
-  pcl::PointCloud<pcl::PointSurfel>::Ptr & surfels);
-
-void fillMsgPosesfromSurfels(
-  geometry_msgs::msg::PoseArray & poses,
-  const pcl::PointCloud<pcl::PointSurfel>::Ptr & surfels);
-
-void fillSuperVoxelMarkersfromAdjacency(
-  const std::map<std::uint32_t, pcl::Supervoxel<pcl::PointXYZRGBA>::Ptr> & supervoxel_clusters,
-  const std::multimap<std::uint32_t, std::uint32_t> & supervoxel_adjacency,
-  const std_msgs::msg::Header & header,
+void fillSuperVoxelMarkersfromAdjacency(const std::map<std::uint32_t, pcl::Supervoxel<pcl::PointXYZRGBA>::Ptr> & supervoxel_clusters,
+  const std::multimap<std::uint32_t, std::uint32_t> & supervoxel_adjacency, const std_msgs::msg::Header & header,
   visualization_msgs::msg::MarkerArray & marker_array);
 
-geometry_msgs::msg::PoseStamped getLinearInterpolatedPose(
-  const geometry_msgs::msg::PoseStamped a,
-  const geometry_msgs::msg::PoseStamped b);
+geometry_msgs::msg::PoseStamped getLinearInterpolatedPose(const geometry_msgs::msg::PoseStamped a, const geometry_msgs::msg::PoseStamped b);
 
-void publishPlan(
-  const std::vector<geometry_msgs::msg::PoseStamped> & path,
-  const geometry_msgs::msg::PoseStamped & start_pose,
-  const geometry_msgs::msg::PoseStamped & goal_pose,
+void publishPlan(const std::vector<geometry_msgs::msg::PoseStamped> & path,
   const geometry_msgs::msg::Vector3 & marker_scale,
   const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr & plan_publisher,
   const rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr & nav_path_publisher,

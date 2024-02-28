@@ -63,6 +63,9 @@ target_link_libraries(vox_nav_ompl_planners ${PCL_LIBRARIES})
 ament_auto_add_executable(planner_server src/planner_server.cpp)
 target_link_libraries(planner_server ${LIBFCL_LIBRARIES} ompl)
 
+# PLANNER CLIENT ##############################################
+ament_auto_add_executable(planner_client src/planner_client.cpp)
+
 # SE2 PLANNE R##################################################
 set(se2_planner vox_nav_se2_planner)
 ament_auto_add_library(se2_planner SHARED src/plugins/se2_planner.cpp)
@@ -107,4 +110,4 @@ if(BUILD_TESTING)
 endif()
         
 pluginlib_export_plugin_description_file(${PROJECT_NAME} plugins.xml)
-ament_auto_package(INSTALL_TO_SHARE config launch)
+ament_auto_package(INSTALL_TO_SHARE config params launch)

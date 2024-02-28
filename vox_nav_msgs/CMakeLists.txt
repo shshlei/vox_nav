@@ -30,6 +30,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetPointCloud.srv"
   "srv/GetTraversabilityMap.srv"
   "action/ComputePathToPose.action"
+  "action/ComputeStartToGoal.action"
   "action/FollowPath.action"
   "action/NavigateToPose.action"
   "action/NavigateThroughGPSPoses.action"

@@ -30,14 +30,11 @@ MapManager::MapManager()
   pcd_map_gps_pose_ = std::make_shared<vox_nav_msgs::msg::OrientedNavSatFix>();
   original_octomap_msg_ = std::make_shared<octomap_msgs::msg::Octomap>();
   collision_octomap_msg_ = std::make_shared<octomap_msgs::msg::Octomap>();
-  elevated_surfel_octomap_msg_ = std::make_shared<octomap_msgs::msg::Octomap>();
-  elevated_surfel_poses_msg_ = std::make_shared<geometry_msgs::msg::PoseArray>();
   octomap_pointcloud_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
   traversable_pointcloud_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
   non_traversable_pointcloud_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
-  elevated_surfels_pointcloud_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
+  elevated_surfel_pointcloud_msg_ = std::make_shared<sensor_msgs::msg::PointCloud2>();
   original_octomap_markers_msg_ = std::make_shared<visualization_msgs::msg::MarkerArray>();
-  elevated_surfel_octomap_markers_msg_ = std::make_shared<visualization_msgs::msg::MarkerArray>();
   tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
   static_transform_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
@@ -164,10 +161,6 @@ MapManager::MapManager()
 
   octomap_markers_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
     octomap_markers_publish_topic_, rclcpp::SystemDefaultsQoS());
-
-  elevated_surfel_octomap_markers_publisher_ =
-    this->create_publisher<visualization_msgs::msg::MarkerArray>(
-      "vox_nav/map_server/elevated_surfel_markers", rclcpp::SystemDefaultsQoS());
 
   pcd_map_pointcloud_ = vox_nav_utilities::loadPointcloudFromPcd(pcd_map_filename_.c_str());
 
@@ -308,8 +301,7 @@ void MapManager::preProcessPCDMap()
 
   Eigen::Affine3d bt = vox_nav_utilities::getRigidBodyTransform(
     pcd_map_transform_matrix_.translation_,
-    pcd_map_transform_matrix_.rpyIntrinsic_,
-    get_logger());
+    pcd_map_transform_matrix_.rpyIntrinsic_);
   auto final_tr = tf2::eigenToTransform(bt);
   pcl_ros::transformPointCloud(
     *pcd_map_pointcloud_, *pcd_map_pointcloud_, final_tr);
@@ -379,10 +371,7 @@ void MapManager::regressCosts()
       *plane_model);
 
     // extract max energy grap from surfel cloud, the higher this , the higher cost
-    double max_energy_gap = vox_nav_map_server::max_energy_gap_in_cloud(
-      surfel_cloud,
-      cost_params_.robot_mass,
-      cost_params_.average_speed);
+    double max_energy_gap = vox_nav_map_server::max_energy_gap_in_cloud(surfel_cloud);
 
     // regulate all costs to be less than 1.0
     double max_tilt = std::max(std::abs(rpy[0]), std::abs(rpy[1]));
@@ -449,15 +438,6 @@ void MapManager::regressCosts()
           elevated_surfels_cloud.points.push_back(sp_up);
         }
       }
-      geometry_msgs::msg::Pose elevated_node_pose;
-      elevated_node_pose.position.x = elevated_surfel.x;
-      elevated_node_pose.position.y = elevated_surfel.y;
-      elevated_node_pose.position.z = elevated_surfel.z;
-      elevated_node_pose.orientation = vox_nav_utilities::getMsgQuaternionfromRPY(
-        rpy[0],
-        rpy[1],
-        rpy[2]);
-      elevated_surfel_poses_msg_->poses.push_back(elevated_node_pose);
     }
     cost_regressed_cloud += *surfel_cloud;
   }
@@ -490,23 +470,6 @@ void MapManager::regressCosts()
   header->frame_id = map_frame_id_;
   header->stamp = this->now();
 
-  vox_nav_map_server::fillOctomapMarkers(
-    elevated_surfel_octomap_markers_msg_,
-    header,
-    elevated_surfels_octomap_octree);
-
-  try {
-    octomap_msgs::fullMapToMsg<octomap::OcTree>(
-      *elevated_surfels_octomap_octree,
-      *elevated_surfel_octomap_msg_);
-    elevated_surfel_octomap_msg_->binary = false;
-    elevated_surfel_octomap_msg_->resolution = octomap_voxel_size_;
-  }
-  catch (const std::exception & e) {
-    RCLCPP_ERROR(
-      get_logger(), "Exception while converting binary octomap %s:", e.what());
-  }
-
   cost_regressed_cloud += *pure_non_traversable_pcl;
   *pcd_map_pointcloud_ = cost_regressed_cloud;
 
@@ -522,7 +485,7 @@ void MapManager::regressCosts()
 void MapManager::handleOriginalOctomap()
 {
   pcl::toROSMsg(*pcd_map_pointcloud_, *octomap_pointcloud_msg_);
-  pcl::toROSMsg(*elevated_surfel_pointcloud_, *elevated_surfels_pointcloud_msg_);
+  pcl::toROSMsg(*elevated_surfel_pointcloud_, *elevated_surfel_pointcloud_msg_);
   pcl::toROSMsg(*pure_traversable_pointcloud_, *traversable_pointcloud_msg_);
   pcl::toROSMsg(*pure_non_traversable_pointcloud_, *non_traversable_pointcloud_msg_);
 
@@ -591,8 +554,8 @@ void MapManager::publishMapVisuals()
   if (publish_octomap_visuals_) {
     octomap_pointcloud_msg_->header.frame_id = map_frame_id_;
     octomap_pointcloud_msg_->header.stamp = this->now();
-    elevated_surfels_pointcloud_msg_->header.frame_id = map_frame_id_;
-    elevated_surfels_pointcloud_msg_->header.stamp = this->now();
+    elevated_surfel_pointcloud_msg_->header.frame_id = map_frame_id_;
+    elevated_surfel_pointcloud_msg_->header.stamp = this->now();
     traversable_pointcloud_msg_->header.frame_id = map_frame_id_;
     traversable_pointcloud_msg_->header.stamp = this->now();
     non_traversable_pointcloud_msg_->header.frame_id = map_frame_id_;
@@ -600,8 +563,7 @@ void MapManager::publishMapVisuals()
 
     octomap_pointloud_publisher_->publish(*octomap_pointcloud_msg_);
     octomap_markers_publisher_->publish(*original_octomap_markers_msg_);
-    elevated_surfel_octomap_markers_publisher_->publish(*elevated_surfel_octomap_markers_msg_);
-    elevated_surfel_pcl_publisher_->publish(*elevated_surfels_pointcloud_msg_);
+    elevated_surfel_pcl_publisher_->publish(*elevated_surfel_pointcloud_msg_);
     traversable_pointcloud_publisher_->publish(*traversable_pointcloud_msg_);
     non_traversable_pointcloud_publisher_->publish(*non_traversable_pointcloud_msg_);
   }
@@ -622,9 +584,7 @@ void MapManager::getGetTraversabilityMapCallback(
   RCLCPP_INFO(get_logger(), "Map is Cofigured Handling an incoming request");
   response->original_octomap = *original_octomap_msg_;
   response->collision_octomap = *collision_octomap_msg_;
-  response->elevated_surfel_octomap = *elevated_surfel_octomap_msg_;
-  response->elevated_surfel_poses = *elevated_surfel_poses_msg_;
-  response->traversable_elevated_cloud = *elevated_surfels_pointcloud_msg_;
+  response->traversable_elevated_cloud = *elevated_surfel_pointcloud_msg_;
   response->traversable_cloud = *traversable_pointcloud_msg_;
   response->is_valid = true;
 }

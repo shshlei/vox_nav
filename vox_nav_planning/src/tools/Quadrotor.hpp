@@ -20,14 +20,14 @@
 class QuadrotorControl
 {
 private:
-// Simulation parameters
+  // Simulation parameters
   double g = 1.0;
   double m = 1.0;
   double Ixx = 1;
   double Iyy = 1;
   double Izz = 1;
 
-// Proportional coefficients
+  // Proportional coefficients
   double Kp_x = 1;
   double Kp_y = 1;
   double Kp_z = 1;
@@ -35,7 +35,7 @@ private:
   double Kp_pitch = 25;
   double Kp_yaw = 25;
 
-// Derivative coefficients
+  // Derivative coefficients
   double Kd_x = 10;
   double Kd_y = 10;
   double Kd_z = 10;
@@ -43,41 +43,40 @@ private:
 public:
   QuadrotorControl()
   {
-
   }
   ~QuadrotorControl() {}
 
   std::vector<double> step(
-    double x_pos, // curr x
-    double y_pos, // curr y
-    double z_pos, // curr z
-    double roll,      // curr roll
-    double pitch, // curr pitch
-    double yaw,   // curr yaw
-    double x_vel, // curr x vel
-    double y_vel, // curr y vel
-    double z_vel, // curr z vel
-    double roll_vel,     // curr roll vel
-    double pitch_vel, // curr pitch vel
-    double yaw_vel,   // curr yaw vel
-    double x_acc, // curr x acc
-    double y_acc, // curr y acc
-    double z_acc, // curr z acc
-    double des_z_pos, // desired z pos
-    double des_yaw,   // desired yaw
-    double des_z_vel, // desired z vel
-    double des_x_acc, // desired x acc
-    double des_y_acc, // desired y acc
-    double des_z_acc, // desired z acc
-    double dt // time step size
+    double x_pos,      // curr x
+    double y_pos,      // curr y
+    double z_pos,      // curr z
+    double roll,       // curr roll
+    double pitch,      // curr pitch
+    double yaw,        // curr yaw
+    double x_vel,      // curr x vel
+    double y_vel,      // curr y vel
+    double z_vel,      // curr z vel
+    double roll_vel,   // curr roll vel
+    double pitch_vel,  // curr pitch vel
+    double yaw_vel,    // curr yaw vel
+    double x_acc,      // curr x acc
+    double y_acc,      // curr y acc
+    double z_acc,      // curr z acc
+    double des_z_pos,  // desired z pos
+    double des_yaw,    // desired yaw
+    double des_z_vel,  // desired z vel
+    double des_x_acc,  // desired x acc
+    double des_y_acc,  // desired y acc
+    double des_z_acc,  // desired z acc
+    double dt          // time step size
   )
   {
     double thrust = m * (g + des_z_acc + Kp_z * (des_z_pos - z_pos) + Kd_z * (des_z_vel - z_vel));
 
     double roll_torque = Kp_roll *
-      (((des_x_acc * sin(des_yaw) - des_y_acc * cos(des_yaw)) / g) - roll);
+                         (((des_x_acc * sin(des_yaw) - des_y_acc * cos(des_yaw)) / g) - roll);
     double pitch_torque = Kp_pitch *
-      (((des_x_acc * cos(des_yaw) - des_y_acc * sin(des_yaw)) / g) - pitch);
+                          (((des_x_acc * cos(des_yaw) - des_y_acc * sin(des_yaw)) / g) - pitch);
     double yaw_torque = Kp_yaw * (des_yaw - yaw);
 
     // Update the ang velocities
@@ -117,7 +116,6 @@ public:
 
     // return new states
     return quadrotor_state;
-
   }
 
   Eigen::Matrix3d rotation_matrix(double roll, double pitch, double yaw)
@@ -130,5 +128,4 @@ public:
       -sin(pitch), cos(pitch) * sin(roll), cos(pitch) * cos(yaw);
     return R;
   }
-
 };

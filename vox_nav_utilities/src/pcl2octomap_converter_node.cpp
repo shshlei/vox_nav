@@ -13,92 +13,50 @@
 // limitations under the License.
 
 #include "vox_nav_utilities/pcl2octomap_converter_node.hpp"
+#include "vox_nav_utilities/pcl_helpers.hpp"
+
+#include <pcl_ros/transforms.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 #include <memory>
 
 namespace vox_nav_utilities
 {
-PCL2OctomapConverter::PCL2OctomapConverter(/* args */)
+PCL2OctomapConverter::PCL2OctomapConverter()
 : Node("pcl2octomap_converter_rclcpp_node")
 {
-  this->declare_parameter("input_pcd_filename", "/home/ros2-foxy/f.pcd");
-  this->declare_parameter("output_binary_octomap_filename", "/home/ros2-foxy/f.bt");
-  this->declare_parameter("octomap_voxelsize", 0.01);
-  this->declare_parameter("cloud_transform.translation.x", 0.0);
-  this->declare_parameter("cloud_transform.translation.y", 0.0);
-  this->declare_parameter("cloud_transform.translation.z", 0.0);
-  this->declare_parameter("cloud_transform.rotation.r", 0.0);
-  this->declare_parameter("cloud_transform.rotation.p", 0.0);
-  this->declare_parameter("cloud_transform.rotation.y", 0.0);
-  this->declare_parameter("apply_filters", true);
-  this->declare_parameter("downsample_voxel_size", 0.05);
-  this->declare_parameter("remove_outlier_mean_K", 10);
-  this->declare_parameter("remove_outlier_stddev_threshold", 1.0);
-  this->declare_parameter("remove_outlier_radius_search", 0.1);
-  this->declare_parameter("remove_outlier_min_neighbors_in_radius", 1);
-
-  input_pcd_filename_ = this->get_parameter("input_pcd_filename").as_string();
-  output_binary_octomap_filename_ =
-    this->get_parameter("output_binary_octomap_filename").as_string();
-  octomap_voxelsize_ =
-    this->get_parameter("octomap_voxelsize").as_double();
-  pointloud_transform_matrix_.translation_.x() =
-    this->get_parameter("cloud_transform.translation.x").as_double();
-  pointloud_transform_matrix_.translation_.y() =
-    this->get_parameter("cloud_transform.translation.y").as_double();
-  pointloud_transform_matrix_.translation_.z() =
-    this->get_parameter("cloud_transform.translation.z").as_double();
-  pointloud_transform_matrix_.rpyIntrinsic_.x() =
-    this->get_parameter("cloud_transform.rotation.r").as_double();
-  pointloud_transform_matrix_.rpyIntrinsic_.y() =
-    this->get_parameter("cloud_transform.rotation.p").as_double();
-  pointloud_transform_matrix_.rpyIntrinsic_.z() =
-    this->get_parameter("cloud_transform.rotation.y").as_double();
-
-  downsample_voxel_size_ = this->get_parameter("downsample_voxel_size").as_double();
-  remove_outlier_mean_K_ = this->get_parameter("remove_outlier_mean_K").as_int();
-  remove_outlier_stddev_threshold_ =
-    this->get_parameter("remove_outlier_stddev_threshold").as_double();
-  remove_outlier_radius_search_ = this->get_parameter("remove_outlier_radius_search").as_double();
-  remove_outlier_min_neighbors_in_radius_ =
-    this->get_parameter("remove_outlier_min_neighbors_in_radius").as_int();
+  input_pcd_filename_ = this->declare_parameter("input_pcd_filename", "");
+  output_binary_octomap_filename_ = this->declare_parameter("output_binary_octomap_filename", "");
+  octomap_voxelsize_ = this->declare_parameter("octomap_voxelsize", 0.01);
+  pointloud_transform_matrix_.translation_.x() = this->declare_parameter("cloud_transform.translation.x", 0.0);
+  pointloud_transform_matrix_.translation_.y() = this->declare_parameter("cloud_transform.translation.y", 0.0);
+  pointloud_transform_matrix_.translation_.z() = this->declare_parameter("cloud_transform.translation.z", 0.0);
+  pointloud_transform_matrix_.rpyIntrinsic_.x() = this->declare_parameter("cloud_transform.rotation.r", 0.0);
+  pointloud_transform_matrix_.rpyIntrinsic_.y() = this->declare_parameter("cloud_transform.rotation.p", 0.0);
+  pointloud_transform_matrix_.rpyIntrinsic_.z() = this->declare_parameter("cloud_transform.rotation.y", 0.0);
+  bool apply_filters = this->declare_parameter("apply_filters", true);
+  downsample_voxel_size_ = this->declare_parameter("downsample_voxel_size", 0.05);
+  remove_outlier_mean_K_ = this->declare_parameter("remove_outlier_mean_K", 10);
+  remove_outlier_stddev_threshold_ = this->declare_parameter("remove_outlier_stddev_threshold", 1.0);
+  remove_outlier_radius_search_ = this->declare_parameter("remove_outlier_radius_search", 0.1);
+  remove_outlier_min_neighbors_in_radius_ = this->declare_parameter("remove_outlier_min_neighbors_in_radius", 1);
 
   pointcloud_ = vox_nav_utilities::loadPointcloudFromPcd(input_pcd_filename_.c_str());
-
-  if (this->get_parameter("apply_filters").as_bool()) {
-    pointcloud_ = vox_nav_utilities::downsampleInputCloud<pcl::PointXYZRGB>(
-      pointcloud_,
-      downsample_voxel_size_);
-    pointcloud_ = vox_nav_utilities::removeOutliersFromInputCloud(
-      pointcloud_,
-      remove_outlier_mean_K_,
-      remove_outlier_stddev_threshold_,
+  if (apply_filters) {
+    pointcloud_ = vox_nav_utilities::downsampleInputCloud<pcl::PointXYZRGB>(pointcloud_, downsample_voxel_size_);
+    pointcloud_ = vox_nav_utilities::removeOutliersFromInputCloud(pointcloud_, remove_outlier_mean_K_, remove_outlier_stddev_threshold_,
       vox_nav_utilities::OutlierRemovalType::StatisticalOutlierRemoval);
-    pointcloud_ = vox_nav_utilities::removeOutliersFromInputCloud(
-      pointcloud_,
-      remove_outlier_min_neighbors_in_radius_,
-      remove_outlier_radius_search_,
+
+    pointcloud_ = vox_nav_utilities::removeOutliersFromInputCloud(pointcloud_, remove_outlier_min_neighbors_in_radius_, remove_outlier_radius_search_,
       vox_nav_utilities::OutlierRemovalType::RadiusOutlierRemoval);
   }
 
-  Eigen::Affine3d bt = vox_nav_utilities::getRigidBodyTransform(
-    pointloud_transform_matrix_.translation_,
-    pointloud_transform_matrix_.rpyIntrinsic_,
-    get_logger());
+  Eigen::Affine3d bt = vox_nav_utilities::getRigidBodyTransform(pointloud_transform_matrix_.translation_, pointloud_transform_matrix_.rpyIntrinsic_);
   auto final_tr = tf2::eigenToTransform(bt);
-  pcl_ros::transformPointCloud(
-    *pointcloud_, *pointcloud_, final_tr);
+  pcl_ros::transformPointCloud(*pointcloud_, *pointcloud_, final_tr);
 
-  octomap_markers_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-    "vox_nav/utils/octomap_markers", rclcpp::SystemDefaultsQoS());
-
-  timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(static_cast<int>(1)),
-    std::bind(&PCL2OctomapConverter::timerCallback, this));
-}
-
-PCL2OctomapConverter::~PCL2OctomapConverter()
-{
+  octomap_markers_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("vox_nav/utils/octomap_markers", rclcpp::SystemDefaultsQoS());
+  timer_ = this->create_wall_timer(std::chrono::milliseconds(10), std::bind(&PCL2OctomapConverter::timerCallback, this));
 }
 
 void PCL2OctomapConverter::timerCallback()

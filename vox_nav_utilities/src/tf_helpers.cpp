@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #include "vox_nav_utilities/tf_helpers.hpp"
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <chrono>
 #include <memory>
 #include <string>
 
 namespace vox_nav_utilities
 {
-
 bool transformPose(const std::shared_ptr<tf2_ros::Buffer> & tf, const std::string & frame,
   const geometry_msgs::msg::PoseStamped & in_pose, geometry_msgs::msg::PoseStamped & out_pose,
   rclcpp::Duration & transform_tolerance)
@@ -94,18 +95,17 @@ bool getCurrentPose(geometry_msgs::msg::PoseStamped & global_pose, tf2_ros::Buff
   return false;
 }
 
-double getEuclidianDistBetweenPoses(const geometry_msgs::msg::PoseStamped & a, const geometry_msgs::msg::PoseStamped & b)
-{
-  double distance = std::sqrt(std::pow(a.pose.position.x - b.pose.position.x, 2) +
-                              std::pow(a.pose.position.y - b.pose.position.y, 2) +
-                              std::pow(a.pose.position.z - b.pose.position.z, 2));
-  return distance;
-}
-
 double getEuclidianDistBetweenPoses(const geometry_msgs::msg::Pose & a, const geometry_msgs::msg::Pose & b)
 {
   double distance = std::sqrt(std::pow(a.position.x - b.position.x, 2) + std::pow(a.position.y - b.position.y, 2) +
                               std::pow(a.position.z - b.position.z, 2));
+  return distance;
+}
+
+double getEuclidianDistBetweenPoses(const geometry_msgs::msg::PoseStamped & a, const geometry_msgs::msg::PoseStamped & b)
+{
+  double distance = std::sqrt(std::pow(a.pose.position.x - b.pose.position.x, 2) + std::pow(a.pose.position.y - b.pose.position.y, 2) +
+                              std::pow(a.pose.position.z - b.pose.position.z, 2));
   return distance;
 }
 
@@ -145,6 +145,45 @@ geometry_msgs::msg::Quaternion getMsgQuaternionfromRPY(const double roll, const 
   return q_msg;
 }
 
+Eigen::Matrix3d getRotationMatrix(double angle, XYZ axis)
+{
+  Eigen::Matrix3d rotationMatrix = Eigen::Matrix3d::Identity();
+  switch (axis) {
+    case XYZ::X:
+    {
+      rotationMatrix = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitX());
+      break;
+    }
+    case XYZ::Y:
+    {
+      rotationMatrix = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitY());
+      break;
+    }
+    case XYZ::Z:
+    {
+      rotationMatrix = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitZ());
+      break;
+    }
+    default:
+      rotationMatrix = Eigen::Matrix3d::Identity();
+  }
+  return rotationMatrix;
+}
+
+Eigen::Affine3d getRigidBodyTransform(const Eigen::Vector3d & translation, const Eigen::Vector3d & intrinsicRpy)
+{
+  Eigen::Affine3d rigidBodyTransform;
+  rigidBodyTransform.setIdentity();
+  rigidBodyTransform.translation() << translation.x(), translation.y(), translation.z();
+  Eigen::Matrix3d rotation(Eigen::Matrix3d::Identity());
+  rotation *= getRotationMatrix(intrinsicRpy.x(), XYZ::X);
+  rotation *= getRotationMatrix(intrinsicRpy.y(), XYZ::Y);
+  rotation *= getRotationMatrix(intrinsicRpy.z(), XYZ::Z);
+  rigidBodyTransform.rotate(rotation);
+  return rigidBodyTransform;
+}
+
+/*
 std::tuple<int, int, int> convert_to_rgb(double minval, double maxval, double val,
   const std::vector<std::tuple<int, int, int>> & colors)
 {
@@ -200,5 +239,6 @@ double convert_to_value(const std::tuple<int, int, int> & rgb, double minval, do
 
   return minval - 1.0;
 }
+*/
 
 }  // namespace vox_nav_utilities

@@ -1,0 +1,47 @@
+vox_nav_map_server_rclcpp_node:
+  ros__parameters:
+    pcd_map_filename: /home/shshlei/navigation_ws/src/vox_nav/vox_nav_bringup/maps/uneven_world.pcd # Provide a PCD format map
+    # PCD PREPROCESS PARAMS
+    pcd_map_downsample_voxel_size: 0.1                                       # Set to smaller if you do not want downsample pointclouds of the map
+    pcd_map_transform:                                                        # Apply an OPTIONAL rigid-body transrom to pcd file, leave to all zeros if not wished
+      translation:                                                            # Unit is meters
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      rotation:                                                               # intrinsic rotation X-Y-Z (r-p-y)sequence, if you acquired map in camera frmae and want to represent
+        r: 0.0 #3.14
+        p: 0.0 #1.57
+        y: 0.0 #1.57
+    apply_filters: False                                                      # Optional noise removal steps to apply to map
+    use_K_remove_outlier: True
+    remove_outlier_mean_K: 50                                                # you can set it True and play with parameters if the map is noisy
+    remove_outlier_stddev_threshold: 0.1
+    remove_outlier_radius_search: 0.1
+    remove_outlier_min_neighbors_in_radius: 1
+    # COST REGRESSION CRITICS AND PARAMS
+    uniform_sample_radius: 0.2
+    surfel_radius: 0.6                                                       # Works as resolution of cost regression onto map
+    max_allowed_tilt: 0.6                                                   # 1st Cost critic Any angle(radians) higher than this is marked as NON-traversable
+    max_allowed_point_deviation: 0.20                                        # 2nd Cost critic Point deviation from plane, this could be viewed as roughness of each cell 
+    max_allowed_energy_gap: 0.2                                              # 3rd Cost critic Max Energy in each cell, this is detemined by max height differnce between edge points of cell
+    node_elevation_distance: 1.8                                             # According to cell_radius, cell centers are sampled from original point cloud map, they are elevated from the original cloud
+    plane_fit_threshold: 0.1                                                 # when fitting a plane to each cell, a plane_fit_threshold is considered from plane fitting utility of PCL
+    cost_critic_weights: [0.45, 0.45, 0.1]                                   # Give weight to each cost critic when calculating final cost, see above 3 Cost Critic descriptions
+    # PCD MAP IS CONVERTED TO OCTOMAP, THIS OCTOMAP IS THEN USED BY PLANNERS FOR
+    # COLLISION CHECKING
+    octomap_voxel_size: 0.4                                                  # determines resolution of Octomap
+    octomap_publish_frequency: 1                                             # Used to determine publish frequncy of octomap visuals(pointclouds and markers)
+    publish_octomap_visuals: true
+    octomap_point_cloud_publish_topic: "vox_nav/map_server/octomap_pointcloud"                  # sensor_msgs::msg::PoinCloud2 that represents octomap
+    octomap_markers_publish_topic: "vox_nav/map_server/octomap_markers"                         # visualization_msgs::msg::MarkeArray that represents octomap
+    map_frame_id: "map"                                                      # This should be consistent with Gloabl EKF node , in robot_localization
+    utm_frame_id: "utm"
+    map_datum:                                                               # Datum coordinates of map is used to geo-reference the map 
+      latitude: 59.664226426330366          # UNEVEN GAZEBO
+      longitude: 10.762822144413834
+      altitude: 0.0
+      quaternion:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0

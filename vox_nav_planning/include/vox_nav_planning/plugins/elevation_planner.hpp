@@ -16,21 +16,19 @@
 #define VOX_NAV_PLANNING__PLUGINS__ELEVATION_PLANNER_HPP_
 
 #include "vox_nav_planning/planner_core.hpp"
-#include "vox_nav_utilities/elevation_state_space.hpp"
+#include <vox_nav_utilities/elevation_state_space.hpp>
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
 
-#include "geometry_msgs/msg/pose_array.hpp"
-
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-
-#include <ompl/base/State.h>
-#include <ompl/base/StateSpace.h>
-#include <ompl/base/SpaceInformation.h>
-#include <ompl/base/ValidStateSampler.h>
-#include <ompl/base/OptimizationObjective.h>
-#include <ompl/base/spaces/RealVectorBounds.h>
+#include <geometry_msgs/msg/pose_array.hpp>
 
 #include <fcl/narrowphase/collision_object.h>
+#include <ompl/base/SpaceInformation.h>
+#include <ompl/base/State.h>
+#include <ompl/base/StateSpace.h>
+#include <ompl/base/ValidStateSampler.h>
+#include <ompl/base/spaces/RealVectorBounds.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #include <memory>
 #include <string>
@@ -42,80 +40,47 @@ namespace vox_nav_planning
 class ElevationPlanner : public vox_nav_planning::PlannerCore
 {
 public:
-  ElevationPlanner();
+  ElevationPlanner() = default;
 
-  ~ElevationPlanner();
+  virtual ~ElevationPlanner() = default;
 
-  void initialize(rclcpp::Node * parent, const std::string & plugin_name) override;
+  void initialize(rclcpp::Node * parent) override;
 
   bool isStateValid(const ompl::base::State * state) override;
-
-  std::vector<geometry_msgs::msg::PoseStamped> getOverlayedStartandGoal() override;
 
   void setupMap() override;
 
   std::vector<geometry_msgs::msg::PoseStamped> createPlan(const geometry_msgs::msg::PoseStamped & start, const geometry_msgs::msg::PoseStamped & goal) override;
 
-  void nodePosesCallback(const geometry_msgs::msg::PoseArray::SharedPtr msg);
-
-  ompl::base::OptimizationObjectivePtr getOptimizationObjective();
-
-  ompl::base::ValidStateSamplerPtr allocValidStateSampler(const ompl::base::SpaceInformation * si);
-
 protected:
   rclcpp::Logger logger_{rclcpp::get_logger("elevation_planner")};
 
+  // global mutex to guard octomap
+  std::mutex octomap_mutex_;
+
   rclcpp::Client<vox_nav_msgs::srv::GetTraversabilityMap>::SharedPtr get_traversability_map_client_;
 
-  // Surfels centers are elevated by node_elevation_distance_, and are stored in this
-  // octomap, this maps is used by planner to sample states that are
-  // strictly laying on ground but not touching. So it constrains the path to be on ground
-  // while it can elevate thorogh ramps or slopes
-  std::shared_ptr<octomap::OcTree> elevated_surfel_octomap_octree_;
-
-  // it is also required to have orientation information of surfels, they are kept in
-  // elevated_surfel_poses_msg_
-  geometry_msgs::msg::PoseArray::SharedPtr elevated_surfel_poses_msg_;
-
-  pcl::PointCloud<pcl::PointSurfel>::Ptr elevated_surfel_cloud_;
-
-  geometry_msgs::msg::PoseStamped nearest_elevated_surfel_to_start_;
-
-  geometry_msgs::msg::PoseStamped nearest_elevated_surfel_to_goal_;
-
-  std::shared_ptr<fcl::CollisionObjectf> elevated_surfels_collision_object_;
-
-  ompl::base::OptimizationObjectivePtr octocost_optimization_;
-
-  ompl::base::StateSpacePtr state_space_;
-
-  std::shared_ptr<ompl::base::RealVectorBounds> z_bounds_;
-
-  std::shared_ptr<ompl::base::RealVectorBounds> se2_bounds_;
-
-  std::string selected_se2_space_name_;
-
-  ompl::base::ElevationStateSpace::SE2StateType se2_space_type_;
-
-  // curve radius for reeds and dubins only
-  double rho_;
-
-  int total_requested_plans_{0};
-
-  double total_solution_length_{0.0};
-
-  // octomap acquired from original PCD map
-  std::shared_ptr<octomap::OcTree> original_octomap_octree_;
+  pcl::PointCloud<pcl::PointSurfel>::Ptr elevated_surfel_pointcloud_;
 
   std::shared_ptr<fcl::CollisionObjectf> original_octomap_collision_object_;
 
   std::shared_ptr<fcl::CollisionObjectf> robot_collision_object_;
 
-  // Better t keep this parameter consistent with map_server, 0.2 is a OK default fo this
-  double octomap_voxel_size_;
+  double min_surfel_distance_{0.0};
 
-  // global mutex to guard octomap
-  std::mutex octomap_mutex_;
+  double max_surfel_distance_{0.2};
+
+  // OMPL
+  ompl::base::StateSpacePtr state_space_;
+
+  std::shared_ptr<ompl::base::RealVectorBounds> se2_bounds_;
+
+  std::shared_ptr<ompl::base::RealVectorBounds> z_bounds_;
+
+  ompl::base::ElevationStateSpace::SE2StateType se2_space_type_;
+
+  // curve radius for reeds and dubins only
+  double rho_;
 };
 }  // namespace vox_nav_planning
 

@@ -16,7 +16,8 @@
 
 namespace vox_nav_planning
 {
-CarControlPlannersBenchMarking::CarControlPlannersBenchMarking() : Node("car_control_planners_benchmark")
+CarControlPlannersBenchMarking::CarControlPlannersBenchMarking()
+: Node("car_control_planners_benchmark")
 {
   RCLCPP_INFO(this->get_logger(), "Creating:");
 
@@ -24,12 +25,11 @@ CarControlPlannersBenchMarking::CarControlPlannersBenchMarking() : Node("car_con
   z_bounds_ = std::make_shared<ompl::base::RealVectorBounds>(1);
   auto v_bounds = std::make_shared<ompl::base::RealVectorBounds>(1);
   auto control_bounds = std::make_shared<ompl::base::RealVectorBounds>(2);
-  elevated_surfel_poses_msg_ = std::make_shared<geometry_msgs::msg::PoseArray>();
 
   elevated_surfel_cloud_ = pcl::PointCloud<pcl::PointSurfel>::Ptr(new pcl::PointCloud<pcl::PointSurfel>);
   is_map_ready_ = false;
 
-  this->declare_parameter("selected_planners", std::vector<std::string>({ "RRTstar", "PRMstar" }));
+  this->declare_parameter("selected_planners", std::vector<std::string>({"RRTstar", "PRMstar"}));
   this->declare_parameter("robot_mesh_path", "");
   this->declare_parameter("planner_timeout", 5.0);
   this->declare_parameter("interpolation_parameter", 50);
@@ -111,38 +111,33 @@ CarControlPlannersBenchMarking::CarControlPlannersBenchMarking() : Node("car_con
   control_bounds->setLow(1, this->get_parameter("control_boundries.minw").as_double());
   control_bounds->setHigh(1, this->get_parameter("control_boundries.maxw").as_double());
 
-  if (selected_se2_space_name_ == "SE2")
-  {
+  if (selected_se2_space_name_ == "SE2") {
     se2_space_type_ = ompl::base::ElevationStateSpace::SE2StateType::SE2;
   }
-  else if (selected_se2_space_name_ == "DUBINS")
-  {
+  else if (selected_se2_space_name_ == "DUBINS") {
     se2_space_type_ = ompl::base::ElevationStateSpace::SE2StateType::DUBINS;
   }
-  else
-  {
+  else {
     se2_space_type_ = ompl::base::ElevationStateSpace::SE2StateType::REDDSSHEEP;
   }
 
   typedef std::shared_ptr<fcl::CollisionGeometryf> CollisionGeometryPtr_t;
   CollisionGeometryPtr_t robot_body_box(
-      new fcl::Box<float>(robot_body_dimensions_.x, robot_body_dimensions_.y, robot_body_dimensions_.z));
+    new fcl::Box<float>(robot_body_dimensions_.x, robot_body_dimensions_.y, robot_body_dimensions_.z));
 
   fcl::CollisionObjectf robot_body_box_object(robot_body_box, fcl::Transform3f());
   robot_collision_object_ = std::make_shared<fcl::CollisionObjectf>(robot_body_box_object);
-  elevated_surfel_octomap_octree_ = std::make_shared<octomap::OcTree>(octomap_voxel_size_);
   original_octomap_octree_ = std::make_shared<octomap::OcTree>(octomap_voxel_size_);
   get_map_client_node_ = std::make_shared<rclcpp::Node>("get_traversability_map_client_node");
 
   get_traversability_map_client_ =
-      get_map_client_node_->create_client<vox_nav_msgs::srv::GetTraversabilityMap>("get_traversability_map");
+    get_map_client_node_->create_client<vox_nav_msgs::srv::GetTraversabilityMap>("get_traversability_map");
 
   octomap_publisher_ = this->create_publisher<octomap_msgs::msg::Octomap>("octomap", rclcpp::SystemDefaultsQoS());
   setupMap();
 
-  // WARN elevated_surfel_poses_msg_ needs to be populated by setupMap();
   state_space_ = std::make_shared<ompl::base::ElevationStateSpace>(
-      se2_space_type_, rho_ /*only valid for dubins or reeds*/, false /*only valid for dubins*/);
+    se2_space_type_, rho_ /*only valid for dubins or reeds*/, false /*only valid for dubins*/);
 
   state_space_->as<ompl::base::ElevationStateSpace>()->setBounds(*se2_bounds_, *z_bounds_, *v_bounds);
   state_space_->setLongestValidSegmentFraction(0.001);
@@ -151,22 +146,22 @@ CarControlPlannersBenchMarking::CarControlPlannersBenchMarking() : Node("car_con
   control_state_space_->as<ompl::control::RealVectorControlSpace>()->setBounds(*control_bounds);
 
   control_simple_setup_ = std::make_shared<ompl::control::SimpleSetup>(control_state_space_);
-  control_simple_setup_->setOptimizationObjective(getOptimizationObjective());
+  ompl::base::OptimizationObjectivePtr length_objective(new ompl::base::PathLengthOptimizationObjective(control_simple_setup_->getSpaceInformation()));
+  control_simple_setup_->setOptimizationObjective(length_objective);
   control_simple_setup_->setStateValidityChecker(
-      std::bind(&CarControlPlannersBenchMarking::isStateValid, this, std::placeholders::_1));
+    std::bind(&CarControlPlannersBenchMarking::isStateValid, this, std::placeholders::_1));
 
   RCLCPP_INFO(this->get_logger(), "Selected planners for benchmarking:");
-  for (auto&& i : selected_planners_)
-  {
+  for (auto && i : selected_planners_) {
     RCLCPP_INFO(this->get_logger(), " %s", i.c_str());
   }
 
   // Initialize pubs & subs
   plan_publisher_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(sample_bencmark_plans_topic_.c_str(),
-                                                                                 rclcpp::SystemDefaultsQoS());
+    rclcpp::SystemDefaultsQoS());
 
   start_goal_poses_publisher_ =
-      this->create_publisher<geometry_msgs::msg::PoseArray>("start_goal_poses", rclcpp::SystemDefaultsQoS());
+    this->create_publisher<geometry_msgs::msg::PoseArray>("start_goal_poses", rclcpp::SystemDefaultsQoS());
 }
 
 CarControlPlannersBenchMarking::~CarControlPlannersBenchMarking()
@@ -174,14 +169,14 @@ CarControlPlannersBenchMarking::~CarControlPlannersBenchMarking()
   RCLCPP_INFO(this->get_logger(), "Destroying:");
 }
 
-void CarControlPlannersBenchMarking::propagate(const ompl::control::SpaceInformation* si,
-                                               const ompl::base::State* start, const ompl::control::Control* control,
-                                               const double duration, ompl::base::State* result)
+void CarControlPlannersBenchMarking::propagate(const ompl::control::SpaceInformation * si,
+  const ompl::base::State * start, const ompl::control::Control * control,
+  const double duration, ompl::base::State * result)
 {
-  const auto* ee_start = start->as<ompl::base::ElevationStateSpace::StateType>();
-  const auto* ee_start_so2 = ee_start->as<ompl::base::SO2StateSpace::StateType>(0);
-  const auto* ee_start_xyzv = ee_start->as<ompl::base::RealVectorStateSpace::StateType>(1);
-  const double* ctrl = control->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
+  const auto * ee_start = start->as<ompl::base::ElevationStateSpace::StateType>();
+  const auto * ee_start_so2 = ee_start->as<ompl::base::SO2StateSpace::StateType>(0);
+  const auto * ee_start_xyzv = ee_start->as<ompl::base::RealVectorStateSpace::StateType>(1);
+  const double * ctrl = control->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
 
   auto x = ee_start_xyzv->values[0];
   auto y = ee_start_xyzv->values[1];
@@ -190,27 +185,11 @@ void CarControlPlannersBenchMarking::propagate(const ompl::control::SpaceInforma
   auto yaw = ee_start_so2->value;
 
   result->as<ompl::base::ElevationStateSpace::StateType>()->setXYZV(x + duration * v * std::cos(yaw) /*X*/,
-                                                                    y + duration * v * std::sin(yaw) /*Y*/, z /*Z*/,
-                                                                    v + duration * ctrl[0] /*V*/);
+    y + duration * v * std::sin(yaw) /*Y*/, z /*Z*/,
+    v + duration * ctrl[0] /*V*/);
   result->as<ompl::base::ElevationStateSpace::StateType>()->setSO2(yaw + duration * ctrl[1] /*W*/);
 
   si->enforceBounds(result);
-}
-
-ompl::base::OptimizationObjectivePtr CarControlPlannersBenchMarking::getOptimizationObjective()
-{
-  // select a optimizatio objective
-  ompl::base::OptimizationObjectivePtr length_objective(
-      new ompl::base::PathLengthOptimizationObjective(control_simple_setup_->getSpaceInformation()));
-  ompl::base::OptimizationObjectivePtr octocost_objective(new ompl::base::OctoCostOptimizationObjective(
-      control_simple_setup_->getSpaceInformation(), elevated_surfel_octomap_octree_));
-
-  ompl::base::MultiOptimizationObjective* multi_optimization =
-      new ompl::base::MultiOptimizationObjective(control_simple_setup_->getSpaceInformation());
-  multi_optimization->addObjective(length_objective, 1.0);
-  multi_optimization->addObjective(octocost_objective, 1.0);
-
-  return ompl::base::OptimizationObjectivePtr(length_objective);
 }
 
 std::map<int, ompl::control::PathControl> CarControlPlannersBenchMarking::doBenchMarking()
@@ -223,17 +202,12 @@ std::map<int, ompl::control::PathControl> CarControlPlannersBenchMarking::doBenc
   si->setMinMaxControlDuration(20, 30);
   si->setPropagationStepSize(0.025);
   control_simple_setup_->setStatePropagator(
-      [this, si](const ompl::base::State* state, const ompl::control::Control* control, const double duration,
-                 ompl::base::State* result) { this->propagate(si.get(), state, control, duration, result); });
-  /*si->setValidStateSamplerAllocator(
-      std::bind(
-        &CarControlPlannersBenchMarking::allocValidStateSampler, this,
-        std::placeholders::_1));*/
+    [this, si](const ompl::base::State * state, const ompl::control::Control * control, const double duration,
+      ompl::base::State * result) { this->propagate(si.get(), state, control, duration, result); });
 
   std::stringstream ss;
 
-  for (int i = 0; i < epochs_; i++)
-  {
+  for (int i = 0; i < epochs_; i++) {
     paths_map.clear();
 
     // spin until a valid random start and goal poses are found. Also
@@ -266,13 +240,13 @@ std::map<int, ompl::control::PathControl> CarControlPlannersBenchMarking::doBenc
     nearest_elevated_surfel_to_goal_.pose.orientation = goal.pose.orientation;
 
     random_start->setXYZV(nearest_elevated_surfel_to_start_.pose.position.x,
-                          nearest_elevated_surfel_to_start_.pose.position.y,
-                          nearest_elevated_surfel_to_start_.pose.position.z, 0);
+      nearest_elevated_surfel_to_start_.pose.position.y,
+      nearest_elevated_surfel_to_start_.pose.position.z, 0);
     random_start->setSO2(start_yaw);
 
     random_goal->setXYZV(nearest_elevated_surfel_to_goal_.pose.position.x,
-                         nearest_elevated_surfel_to_goal_.pose.position.y,
-                         nearest_elevated_surfel_to_goal_.pose.position.z, 0);
+      nearest_elevated_surfel_to_goal_.pose.position.y,
+      nearest_elevated_surfel_to_goal_.pose.position.z, 0);
     random_goal->setSO2(goal_yaw);
 
     start_and_goal_poses_.poses.clear();
@@ -284,13 +258,11 @@ std::map<int, ompl::control::PathControl> CarControlPlannersBenchMarking::doBenc
     std::mutex plan_mutex;
 
     int index(0);
-    for (auto&& planner_name : selected_planners_)
-    {
+    for (auto && planner_name : selected_planners_) {
       ompl::base::PlannerPtr planner_ptr;
       initializeSelectedControlPlanner(planner_ptr, planner_name, si, logger_);
 
-      if (publish_a_sample_bencmark_)
-      {
+      if (publish_a_sample_bencmark_) {
         std::lock_guard<std::mutex> guard(plan_mutex);
 
         RCLCPP_INFO(this->get_logger(), "Creating sample plans.");
@@ -300,12 +272,10 @@ std::map<int, ompl::control::PathControl> CarControlPlannersBenchMarking::doBenc
         // control_simple_setup_->print(std::cout);
         ompl::base::PlannerStatus solved = control_simple_setup_->solve(planner_timeout_);
         ompl::control::PathControl solution_path(si);
-        try
-        {
+        try {
           solution_path = control_simple_setup_->getSolutionPath();
         }
-        catch (const std::exception& e)
-        {
+        catch (const std::exception & e) {
           std::cerr << e.what() << '\n';
           RCLCPP_WARN(logger_, "Exception occured while retrivieng control solution path %s", e.what());
           control_simple_setup_->clear();
@@ -314,8 +284,7 @@ std::map<int, ompl::control::PathControl> CarControlPlannersBenchMarking::doBenc
         ss << planner_name.c_str() << " " << solved << " " << solution_path.length() << "\n";
         std::pair<int, ompl::control::PathControl> curr_pair(index, solution_path);
         if (solved == ompl::base::PlannerStatus::EXACT_SOLUTION ||
-            solved == ompl::base::PlannerStatus::APPROXIMATE_SOLUTION || solved == ompl::base::PlannerStatus::TIMEOUT)
-        {
+            solved == ompl::base::PlannerStatus::APPROXIMATE_SOLUTION || solved == ompl::base::PlannerStatus::TIMEOUT) {
           paths_map.insert(curr_pair);
         }
         control_simple_setup_->clear();
@@ -332,13 +301,13 @@ std::map<int, ompl::control::PathControl> CarControlPlannersBenchMarking::doBenc
   return paths_map;
 }
 
-bool CarControlPlannersBenchMarking::isStateValid(const ompl::base::State* state)
+bool CarControlPlannersBenchMarking::isStateValid(const ompl::base::State * state)
 {
-  const auto* cstate = state->as<ompl::base::ElevationStateSpace::StateType>();
+  const auto * cstate = state->as<ompl::base::ElevationStateSpace::StateType>();
   // cast the abstract state type to the type we expect
-  const auto* so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
+  const auto * so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
   // extract the second component of the state and cast it to what we expect
-  const auto* xyzv = cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
+  const auto * xyzv = cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
   fcl::CollisionRequestf requestType(1, false, 1, false);
   // check validity of state Fdefined by pos & rot
   fcl::Vector3f translation(xyzv->values[0], xyzv->values[1], xyzv->values[2]);
@@ -351,34 +320,30 @@ bool CarControlPlannersBenchMarking::isStateValid(const ompl::base::State* state
   fcl::CollisionResultf collisionWithFullMapResult;
 
   fcl::collide<float>(robot_collision_object_.get(), original_octomap_collision_object_.get(), requestType,
-                      collisionWithFullMapResult);
+    collisionWithFullMapResult);
 
   return !collisionWithFullMapResult.isCollision();
 }
 
 void CarControlPlannersBenchMarking::publishSamplePlans(std::map<int, ompl::control::PathControl> sample_paths)
 {
-  if (!publish_a_sample_bencmark_)
-  {
+  if (!publish_a_sample_bencmark_) {
     RCLCPP_INFO(this->get_logger(), "Will not publish sample plans.");
   }
   visualization_msgs::msg::MarkerArray marker_array;
   int total_poses = 0;
 
   auto it = sample_paths.begin();
-  while (it != sample_paths.end())
-  {
+  while (it != sample_paths.end()) {
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "map";
     marker.header.stamp = rclcpp::Clock().now();
 
-    if (!robot_mesh_path_.empty())
-    {
+    if (!robot_mesh_path_.empty()) {
       marker.type = visualization_msgs::msg::Marker::MESH_RESOURCE;
       marker.mesh_resource = robot_mesh_path_;
     }
-    else
-    {
+    else {
       marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
     }
     marker.action = visualization_msgs::msg::Marker::ADD;
@@ -390,11 +355,10 @@ void CarControlPlannersBenchMarking::publishSamplePlans(std::map<int, ompl::cont
     marker.color = getColorByIndex(it->first);
     marker.ns = "path" + std::to_string(it->first);
 
-    for (std::size_t curr_path_state = 0; curr_path_state < it->second.getStateCount(); curr_path_state++)
-    {
-      const auto* cstate = it->second.getState(curr_path_state)->as<ompl::base::ElevationStateSpace::StateType>();
+    for (std::size_t curr_path_state = 0; curr_path_state < it->second.getStateCount(); curr_path_state++) {
+      const auto * cstate = it->second.getState(curr_path_state)->as<ompl::base::ElevationStateSpace::StateType>();
       // const auto* so2 = cstate->as<ompl::base::SO2StateSpace::StateType>(0);
-      const auto* xyzv = cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
+      const auto * xyzv = cstate->as<ompl::base::RealVectorStateSpace::StateType>(1);
       geometry_msgs::msg::Point p;
       p.x = xyzv->values[0];
       p.y = xyzv->values[1];
@@ -423,8 +387,7 @@ void CarControlPlannersBenchMarking::setupMap()
 {
   const std::lock_guard<std::mutex> lock(octomap_mutex_);
 
-  if (!octomap_from_file_.empty())
-  {
+  if (!octomap_from_file_.empty()) {
     // Read Octomap from file
 
     octomap::OcTree temp_tree(0.2);
@@ -434,7 +397,7 @@ void CarControlPlannersBenchMarking::setupMap()
 
     auto original_octomap_fcl_octree = std::make_shared<fcl::OcTreef>(original_octomap_octree_);
     original_octomap_collision_object_ =
-        std::make_shared<fcl::CollisionObjectf>(std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
+      std::make_shared<fcl::CollisionObjectf>(std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
 
     RCLCPP_INFO(this->get_logger(), "Read Octomap from file");
 
@@ -444,28 +407,23 @@ void CarControlPlannersBenchMarking::setupMap()
     octomap_msg.header.frame_id = "map";
     octomap_msg.header.stamp = rclcpp::Clock().now();
 
-    for (int i = 0; i < 100; i++)
-    {
+    for (int i = 0; i < 100; i++) {
       octomap_publisher_->publish(octomap_msg);
     }
 
     RCLCPP_INFO(logger_,
-                "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
-                "octomap for state validity (aka collision check)",
-                original_octomap_octree_->size());
+      "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
+      "octomap for state validity (aka collision check)",
+      original_octomap_octree_->size());
 
     is_map_ready_ = true;
   }
-  else
-  {
-    while (!is_map_ready_ && rclcpp::ok())
-    {
+  else {
+    while (!is_map_ready_ && rclcpp::ok()) {
       auto request = std::make_shared<vox_nav_msgs::srv::GetTraversabilityMap::Request>();
 
-      while (!get_traversability_map_client_->wait_for_service(std::chrono::seconds(1)))
-      {
-        if (!rclcpp::ok())
-        {
+      while (!get_traversability_map_client_->wait_for_service(std::chrono::seconds(1))) {
+        if (!rclcpp::ok()) {
           RCLCPP_ERROR(logger_, "Interrupted while waiting for the get_traversability_map service. Exiting");
           return;
         }
@@ -473,84 +431,42 @@ void CarControlPlannersBenchMarking::setupMap()
       }
 
       auto result_future = get_traversability_map_client_->async_send_request(request);
-      if (rclcpp::spin_until_future_complete(get_map_client_node_, result_future) != rclcpp::FutureReturnCode::SUCCESS)
-      {
+      if (rclcpp::spin_until_future_complete(get_map_client_node_, result_future) != rclcpp::FutureReturnCode::SUCCESS) {
         RCLCPP_ERROR(logger_, "/get_traversability_map service call failed");
       }
       auto response = result_future.get();
 
-      if (response->is_valid)
-      {
+      if (response->is_valid) {
         is_map_ready_ = true;
       }
-      else
-      {
+      else {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         RCLCPP_INFO(logger_, "Waiting for GetTraversabilityMap service to provide correct maps.");
         continue;
       }
 
-      auto original_octomap_octree =
-          dynamic_cast<octomap::OcTree*>(octomap_msgs::fullMsgToMap(response->original_octomap));
+      auto original_octomap_octree = dynamic_cast<octomap::OcTree *>(octomap_msgs::fullMsgToMap(response->original_octomap));
       original_octomap_octree_ = std::make_shared<octomap::OcTree>(*original_octomap_octree);
-
-      auto elevated_surfel_octomap_octree =
-          dynamic_cast<octomap::OcTree*>(octomap_msgs::fullMsgToMap(response->elevated_surfel_octomap));
-      elevated_surfel_octomap_octree_ = std::make_shared<octomap::OcTree>(*elevated_surfel_octomap_octree);
-
       delete original_octomap_octree;
-      delete elevated_surfel_octomap_octree;
-
-      auto elevated_surfels_fcl_octree = std::make_shared<fcl::OcTreef>(elevated_surfel_octomap_octree_);
-      elevated_surfels_collision_object_ = std::make_shared<fcl::CollisionObjectf>(
-          std::shared_ptr<fcl::CollisionGeometryf>(elevated_surfels_fcl_octree));
 
       auto original_octomap_fcl_octree = std::make_shared<fcl::OcTreef>(original_octomap_octree_);
       original_octomap_collision_object_ = std::make_shared<fcl::CollisionObjectf>(
-          std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
+        std::shared_ptr<fcl::CollisionGeometryf>(original_octomap_fcl_octree));
 
-      elevated_surfel_poses_msg_ = std::make_shared<geometry_msgs::msg::PoseArray>(response->elevated_surfel_poses);
-      for (auto&& i : elevated_surfel_poses_msg_->poses)
-      {
-        pcl::PointSurfel surfel;
-        surfel.x = i.position.x;
-        surfel.y = i.position.y;
-        surfel.z = i.position.z;
-        double r, p, y;
-        vox_nav_utilities::getRPYfromMsgQuaternion(i.orientation, r, p, y);
-        surfel.normal_x = r;
-        surfel.normal_y = p;
-        surfel.normal_z = y;
-        elevated_surfel_cloud_->points.push_back(surfel);
-      }
+      pcl::fromROSMsg(response->traversable_elevated_cloud, *elevated_surfel_cloud_);
 
       RCLCPP_INFO(logger_,
-                  "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
-                  "octomap for state validity (aka collision check)",
-                  original_octomap_octree_->size());
-
-      RCLCPP_INFO(logger_,
-                  "Recieved a valid Octomap which represents Elevated surfels with %ld nodes,"
-                  " A FCL collision tree will be created from this "
-                  "octomap for state validity (aka collision check)",
-                  elevated_surfel_octomap_octree_->size());
+        "Recieved a valid Octomap with %ld nodes, A FCL collision tree will be created from this "
+        "octomap for state validity (aka collision check)",
+        original_octomap_octree_->size());
     }
   }
-}
-
-ompl::base::ValidStateSamplerPtr CarControlPlannersBenchMarking::allocValidStateSampler(const ompl::base::SpaceInformation* /*si*/)
-{
-  auto valid_sampler = std::make_shared<ompl::base::OctoCellValidStateSampler>(
-      control_simple_setup_->getSpaceInformation(), nearest_elevated_surfel_to_start_, nearest_elevated_surfel_to_goal_,
-      elevated_surfel_poses_msg_);
-  return valid_sampler;
 }
 
 std_msgs::msg::ColorRGBA CarControlPlannersBenchMarking::getColorByIndex(int index)
 {
   std_msgs::msg::ColorRGBA result;
-  switch (index)
-  {
+  switch (index) {
     case 0:  // RED:
       result.r = 0.8;
       result.g = 0.1;
@@ -667,22 +583,20 @@ double CarControlPlannersBenchMarking::getRangedRandom(double min, double max)
 
 }  // namespace vox_nav_planning
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<vox_nav_planning::CarControlPlannersBenchMarking>();
-  while (rclcpp::ok() && !node->is_map_ready_)
-  {
+  while (rclcpp::ok() && !node->is_map_ready_) {
     rclcpp::spin_some(node->get_node_base_interface());
     RCLCPP_INFO(node->get_logger(),
-                "Waiting for octomap to be ready In order "
-                "to run planner bencmarking... ");
+      "Waiting for octomap to be ready In order "
+      "to run planner bencmarking... ");
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
   RCLCPP_INFO(node->get_logger(), "Octomap ready, running bencmark with given configurations");
   auto paths_map = node->doBenchMarking();
-  while (rclcpp::ok())
-  {
+  while (rclcpp::ok()) {
     node->publishSamplePlans(paths_map);
     rclcpp::spin_some(node->get_node_base_interface());
     RCLCPP_INFO(node->get_logger(), "publishing planner bencmarking... press CTRL+C to stop");

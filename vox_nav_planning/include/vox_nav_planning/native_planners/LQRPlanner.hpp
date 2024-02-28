@@ -15,8 +15,8 @@
 #ifndef VOX_NAV_PLANNING__RRT__LQRPLANNER_HPP_
 #define VOX_NAV_PLANNING__RRT__LQRPLANNER_HPP_
 
-#include <ompl/base/State.h>
 #include <ompl/base/Planner.h>
+#include <ompl/base/State.h>
 #include <ompl/control/SpaceInformation.h>
 
 #include <tuple>

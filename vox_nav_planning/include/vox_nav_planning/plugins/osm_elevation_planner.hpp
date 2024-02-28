@@ -15,8 +15,9 @@
 #ifndef VOX_NAV_PLANNING__PLUGINS__OSM_ELEVATION_PLANNER_HPP_
 #define VOX_NAV_PLANNING__PLUGINS__OSM_ELEVATION_PLANNER_HPP_
 
-#include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <vox_nav_msgs/srv/get_traversability_map.hpp>
 
 /*
 #include <pcl/common/common.h>
@@ -90,9 +91,7 @@ public:
    * @brief
    *
    */
-  void initialize(
-    rclcpp::Node * parent,
-    const std::string & plugin_name) override;
+  void initialize(rclcpp::Node * parent) override;
 
   /**
    * @brief Method create the plan from a starting and ending goal.
@@ -135,14 +134,6 @@ public:
    *
    */
   void setupMap() override;
-
-  /**
-   * @brief Get the Overlayed Start and Goal poses, only x and y are provided for goal ,
-   * but internally planner finds closest valid node on octomap and reassigns goal to this pose
-   *
-   * @return std::vector<geometry_msgs::msg::PoseStamped>
-   */
-  std::vector<geometry_msgs::msg::PoseStamped> getOverlayedStartandGoal();
 
   void propagate(
     const ompl::control::SpaceInformation * si,
@@ -235,7 +226,6 @@ protected:
   ompl::control::ControlSpacePtr control_state_space_;
   ompl::control::SimpleSetupPtr control_simple_setup_;
 
-  std::string selected_se2_space_name_;
   ompl::base::ElevationStateSpace::SE2StateType se2_space_type_;
   // curve radius for reeds and dubins only
   double rho_;
@@ -244,8 +234,6 @@ protected:
 
   std::mutex map_mutex_;
 
-  geometry_msgs::msg::PoseStamped start_pose_;
-  geometry_msgs::msg::PoseStamped goal_pose_;
   geometry_msgs::msg::PoseArray::SharedPtr valid_poses_;
 };
 }  // namespace vox_nav_planning

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <arg name="start_x" default="0.0"/>
+  <arg name="start_y" default="-1.5"/>
+  <arg name="start_z" default="-0.4"/>
+  <arg name="start_roll" default="0.0"/>
+  <arg name="start_pitch" default="0.0"/>
+  <arg name="start_yaw" default="0.0"/>
+
+  <!--10 -5 -->
+  <!--10 -5 -->
+  <arg name="goal_x" default="30.0"/>
+  <arg name="goal_y" default="-5.0"/>
+  <arg name="goal_z" default="-0.4"/>
+  <arg name="goal_roll" default="0.0"/>
+  <arg name="goal_pitch" default="0.0"/>
+  <arg name="goal_yaw" default="0.0"/>
+
+  <node pkg="vox_nav_planning" exec="planner_client" name="vox_nav_planner_client_rclcpp_node" output="screen">
+    <!-- start pose -->
+    <param name="start_x" value="$(var start_x)"/>
+    <param name="start_y" value="$(var start_y)"/>
+    <param name="start_z" value="$(var start_z)"/>
+    <param name="start_roll" value="$(var start_roll)"/>
+    <param name="start_pitch" value="$(var start_pitch)"/>
+    <param name="start_yaw" value="$(var start_yaw)"/>
+
+    <!-- goal pose -->
+    <param name="goal_x" value="$(var goal_x)"/>
+    <param name="goal_y" value="$(var goal_y)"/>
+    <param name="goal_z" value="$(var goal_z)"/>
+    <param name="goal_roll" value="$(var goal_roll)"/>
+    <param name="goal_pitch" value="$(var goal_pitch)"/>
+    <param name="goal_yaw" value="$(var goal_yaw)"/>
+  </node>
+</launch>

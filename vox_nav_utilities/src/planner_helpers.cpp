@@ -17,6 +17,8 @@
 #include "vox_nav_utilities/tf_helpers.hpp"
 
 // OMPL GEOMETRIC
+#include <ompl/geometric/planners/rrt/RRT.h>
+#include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/geometric/planners/rrt/RRTsharp.h>
 #include <ompl/geometric/planners/rrt/InformedRRTstar.h>
@@ -43,32 +45,16 @@
 
 namespace vox_nav_utilities
 {
-
-geometry_msgs::msg::PoseStamped getNearstNode(const geometry_msgs::msg::PoseStamped & state,
-  const std::shared_ptr<octomap::OcTree> & nodes_octree)
-{
-  auto nearest_node_pose = state;
-  double dist = INFINITY;
-  for (auto it = nodes_octree->begin(), end = nodes_octree->end(); it != end; ++it) {
-    if (nodes_octree->isNodeOccupied(*it)) {
-      auto dist_to_crr_node = std::sqrt(std::pow(it.getCoordinate().x() - state.pose.position.x, 2) +
-                                        std::pow(it.getCoordinate().y() - state.pose.position.y, 2) +
-                                        std::pow(it.getCoordinate().z() - state.pose.position.z, 2));
-      if (dist_to_crr_node < dist) {
-        dist = dist_to_crr_node;
-        nearest_node_pose.pose.position.x = it.getCoordinate().x();
-        nearest_node_pose.pose.position.y = it.getCoordinate().y();
-        nearest_node_pose.pose.position.z = it.getCoordinate().z();
-      }
-    }
-  }
-  return nearest_node_pose;
-}
-
 void initializeSelectedPlanner(ompl::base::PlannerPtr & planner, const std::string & selected_planner_name,
   const ompl::base::SpaceInformationPtr & si, const rclcpp::Logger & logger)
 {
-  if (selected_planner_name == std::string("PRMstar")) {
+  if (selected_planner_name == std::string("RRT")) {
+    planner = ompl::base::PlannerPtr(new ompl::geometric::RRT(si));
+  }
+  else if (selected_planner_name == std::string("RRTConnect")) {
+    planner = ompl::base::PlannerPtr(new ompl::geometric::RRTConnect(si));
+  }
+  else if (selected_planner_name == std::string("PRMstar")) {
     planner = ompl::base::PlannerPtr(new ompl::geometric::PRMstar(si));
   }
   else if (selected_planner_name == std::string("LazyPRMstar")) {
@@ -122,7 +108,7 @@ void initializeSelectedPlanner(ompl::base::PlannerPtr & planner, const std::stri
   else if (selected_planner_name == std::string("AnytimePathShortening")) {
     planner = ompl::base::PlannerPtr(new ompl::geometric::AnytimePathShortening(si));
     auto aps_planner = std::make_shared<ompl::geometric::AnytimePathShortening>(si);
-    for (size_t i = 0; i < 8; i++) {
+    for (std::size_t i = 0; i < 8; i++) {
       auto prm_planner = ompl::base::PlannerPtr(new ompl::geometric::PRMstar(si));
       aps_planner->addPlanner(prm_planner);
     }
@@ -134,85 +120,97 @@ void initializeSelectedPlanner(ompl::base::PlannerPtr & planner, const std::stri
   }
 }
 
-pcl::PointSurfel poseMsg2PCLSurfel(const geometry_msgs::msg::PoseStamped & pose_stamped)
+geometry_msgs::msg::PoseStamped getNearstNode(const geometry_msgs::msg::PoseStamped & state, const std::shared_ptr<octomap::OcTree> & nodes_octree)
+{
+  auto nearest_node_pose = state;
+  double dist = INFINITY;
+  for (auto it = nodes_octree->begin(), end = nodes_octree->end(); it != end; ++it) {
+    if (!nodes_octree->isNodeOccupied(*it)) continue;
+
+    auto dist_to_crr_node = std::sqrt(std::pow(it.getCoordinate().x() - state.pose.position.x, 2) +
+                                      std::pow(it.getCoordinate().y() - state.pose.position.y, 2) +
+                                      std::pow(it.getCoordinate().z() - state.pose.position.z, 2));
+    if (dist_to_crr_node >= dist) continue;
+
+    dist = dist_to_crr_node;
+    nearest_node_pose.pose.position.x = it.getCoordinate().x();
+    nearest_node_pose.pose.position.y = it.getCoordinate().y();
+    nearest_node_pose.pose.position.z = it.getCoordinate().z();
+  }
+  return nearest_node_pose;
+}
+
+float distance(float x, float y, float z, const pcl::PointCloud<pcl::PointXYZ>::Ptr & elevated_cloud)
+{
+  pcl::PointXYZ surfel;
+  surfel.x = x;
+  surfel.y = y;
+  surfel.z = z;
+
+  pcl::PointXYZ nearest_surfel = vox_nav_utilities::getNearstPoint<pcl::PointXYZ, pcl::PointCloud<pcl::PointXYZ>::Ptr>(surfel, elevated_cloud);
+  double distance = std::sqrt(std::pow(surfel.x - nearest_surfel.x, 2) + std::pow(surfel.y - nearest_surfel.y, 2) + std::pow(surfel.z - nearest_surfel.z, 2));
+  return distance;
+}
+
+float distance(float x, float y, float z, const pcl::PointCloud<pcl::PointSurfel>::Ptr & elevated_surfel_cloud)
 {
   pcl::PointSurfel surfel;
-  surfel.x = pose_stamped.pose.position.x;
-  surfel.y = pose_stamped.pose.position.y;
-  surfel.z = pose_stamped.pose.position.z;
+  surfel.x = x;
+  surfel.y = y;
+  surfel.z = z;
 
-  double normal_x, normal_y, normal_z;
-  vox_nav_utilities::getRPYfromMsgQuaternion(pose_stamped.pose.orientation, normal_x, normal_y, normal_z);
-
-  surfel.normal_x = normal_x;
-  surfel.normal_y = normal_y;
-  surfel.normal_z = normal_z;
-  return surfel;
+  pcl::PointSurfel nearest_surfel = vox_nav_utilities::getNearstPoint<pcl::PointSurfel, pcl::PointCloud<pcl::PointSurfel>::Ptr>(surfel, elevated_surfel_cloud);
+  float distance = (surfel.x - nearest_surfel.x) * nearest_surfel.normal_x + (surfel.y - nearest_surfel.y) * nearest_surfel.normal_y + (surfel.z - nearest_surfel.z) * nearest_surfel.normal_z;
+  return distance;
 }
 
-geometry_msgs::msg::PoseStamped PCLSurfel2PoseMsg(const pcl::PointSurfel & surfel)
+void determineValidNearestStartGoal(geometry_msgs::msg::PoseStamped & nearest_valid_start, geometry_msgs::msg::PoseStamped & nearest_valid_goal,
+  const geometry_msgs::msg::PoseStamped & actual_start, const geometry_msgs::msg::PoseStamped & actual_goal,
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr & elevated_cloud)
 {
-  geometry_msgs::msg::PoseStamped pose_stamped;
-  pose_stamped.pose.position.x = surfel.x;
-  pose_stamped.pose.position.y = surfel.y;
-  pose_stamped.pose.position.z = surfel.z;
-  pose_stamped.pose.orientation =
-    vox_nav_utilities::getMsgQuaternionfromRPY(surfel.normal_x, surfel.normal_y, surfel.normal_z);
+  pcl::PointXYZ start_nearest, goal_nearest;
+  start_nearest.x = actual_start.pose.position.x;
+  start_nearest.y = actual_start.pose.position.y;
+  start_nearest.z = actual_start.pose.position.z;
+  goal_nearest.x = actual_goal.pose.position.x;
+  goal_nearest.y = actual_goal.pose.position.y;
+  goal_nearest.z = actual_goal.pose.position.z;
+  
+  start_nearest = vox_nav_utilities::getNearstPoint<pcl::PointXYZ, pcl::PointCloud<pcl::PointXYZ>::Ptr>(start_nearest, elevated_cloud);
+  goal_nearest = vox_nav_utilities::getNearstPoint<pcl::PointXYZ, pcl::PointCloud<pcl::PointXYZ>::Ptr>(goal_nearest, elevated_cloud);
 
-  return pose_stamped;
+  nearest_valid_start.pose.position.x = start_nearest.x;
+  nearest_valid_start.pose.position.y = start_nearest.y;
+  nearest_valid_start.pose.position.z = start_nearest.z;
+  nearest_valid_goal.pose.position.x = goal_nearest.x;
+  nearest_valid_goal.pose.position.y = goal_nearest.y;
+  nearest_valid_goal.pose.position.z = goal_nearest.z;
 }
 
-void determineValidNearestGoalStart(geometry_msgs::msg::PoseStamped & nearest_valid_start,
-  geometry_msgs::msg::PoseStamped & nearest_valid_goal,
-  const geometry_msgs::msg::PoseStamped & actual_start,
-  const geometry_msgs::msg::PoseStamped & actual_goal,
+void determineValidNearestStartGoal(geometry_msgs::msg::PoseStamped & nearest_valid_start, geometry_msgs::msg::PoseStamped & nearest_valid_goal,
+  const geometry_msgs::msg::PoseStamped & actual_start, const geometry_msgs::msg::PoseStamped & actual_goal,
   const pcl::PointCloud<pcl::PointSurfel>::Ptr & elevated_surfel_cloud)
 {
-  pcl::PointSurfel start_nearest_surfel = vox_nav_utilities::poseMsg2PCLSurfel(actual_start);
-  pcl::PointSurfel goal_nearest_surfel = vox_nav_utilities::poseMsg2PCLSurfel(actual_goal);
+  pcl::PointSurfel start_nearest, goal_nearest;
+  start_nearest.x = actual_start.pose.position.x;
+  start_nearest.y = actual_start.pose.position.y;
+  start_nearest.z = actual_start.pose.position.z;
+  goal_nearest.x = actual_goal.pose.position.x;
+  goal_nearest.y = actual_goal.pose.position.y;
+  goal_nearest.z = actual_goal.pose.position.z;
+  
+  start_nearest = vox_nav_utilities::getNearstPoint<pcl::PointSurfel, pcl::PointCloud<pcl::PointSurfel>::Ptr>(start_nearest, elevated_surfel_cloud);
+  goal_nearest = vox_nav_utilities::getNearstPoint<pcl::PointSurfel, pcl::PointCloud<pcl::PointSurfel>::Ptr>(goal_nearest, elevated_surfel_cloud);
 
-  start_nearest_surfel = vox_nav_utilities::getNearstPoint<pcl::PointSurfel, pcl::PointCloud<pcl::PointSurfel>::Ptr>(
-    start_nearest_surfel, elevated_surfel_cloud);
-
-  goal_nearest_surfel = vox_nav_utilities::getNearstPoint<pcl::PointSurfel, pcl::PointCloud<pcl::PointSurfel>::Ptr>(
-    goal_nearest_surfel, elevated_surfel_cloud);
-
-  nearest_valid_start = vox_nav_utilities::PCLSurfel2PoseMsg(start_nearest_surfel);
-  nearest_valid_goal = vox_nav_utilities::PCLSurfel2PoseMsg(goal_nearest_surfel);
+  nearest_valid_start.pose.position.x = start_nearest.x;
+  nearest_valid_start.pose.position.y = start_nearest.y;
+  nearest_valid_start.pose.position.z = start_nearest.z;
+  nearest_valid_goal.pose.position.x = goal_nearest.x;
+  nearest_valid_goal.pose.position.y = goal_nearest.y;
+  nearest_valid_goal.pose.position.z = goal_nearest.z;
 }
 
-void fillSurfelsfromMsgPoses(const geometry_msgs::msg::PoseArray & poses,
-  pcl::PointCloud<pcl::PointSurfel>::Ptr & surfels)
-{
-  for (auto && i : poses.poses) {
-    pcl::PointSurfel surfel;
-    surfel.x = i.position.x;
-    surfel.y = i.position.y;
-    surfel.z = i.position.z;
-    double r, p, y;
-    vox_nav_utilities::getRPYfromMsgQuaternion(i.orientation, r, p, y);
-    surfel.normal_x = r;
-    surfel.normal_y = p;
-    surfel.normal_z = y;
-    surfels->points.push_back(surfel);
-  }
-}
-
-void fillMsgPosesfromSurfels(geometry_msgs::msg::PoseArray & poses,
-  const pcl::PointCloud<pcl::PointSurfel>::Ptr & surfels)
-{
-  for (auto && i : surfels->points) {
-    geometry_msgs::msg::Pose pose;
-    pose.position.x = i.x;
-    pose.position.y = i.y;
-    pose.position.z = i.z;
-    pose.orientation = vox_nav_utilities::getMsgQuaternionfromRPY(i.normal_x, i.normal_y, i.normal_z);
-    poses.poses.push_back(pose);
-  }
-}
-
-void fillSuperVoxelMarkersfromAdjacency(
-  const std::map<std::uint32_t, pcl::Supervoxel<pcl::PointXYZRGBA>::Ptr> & supervoxel_clusters,
+void fillSuperVoxelMarkersfromAdjacency(const std::map<std::uint32_t, pcl::Supervoxel<pcl::PointXYZRGBA>::Ptr> & supervoxel_clusters,
   const std::multimap<std::uint32_t, std::uint32_t> & supervoxel_adjacency, const std_msgs::msg::Header & header,
   visualization_msgs::msg::MarkerArray & marker_array)
 {
@@ -279,8 +277,7 @@ void fillSuperVoxelMarkersfromAdjacency(
   }
 }
 
-geometry_msgs::msg::PoseStamped getLinearInterpolatedPose(const geometry_msgs::msg::PoseStamped a,
-  const geometry_msgs::msg::PoseStamped b)
+geometry_msgs::msg::PoseStamped getLinearInterpolatedPose(const geometry_msgs::msg::PoseStamped a, const geometry_msgs::msg::PoseStamped b)
 {
   geometry_msgs::msg::PoseStamped linear_interpolated_pose;
   linear_interpolated_pose.pose.position.x = (a.pose.position.x + b.pose.position.x) / 2.0;
@@ -290,7 +287,6 @@ geometry_msgs::msg::PoseStamped getLinearInterpolatedPose(const geometry_msgs::m
 }
 
 void publishPlan(const std::vector<geometry_msgs::msg::PoseStamped> & path,
-  const geometry_msgs::msg::PoseStamped & start_pose, const geometry_msgs::msg::PoseStamped & goal_pose,
   const geometry_msgs::msg::Vector3 & marker_scale,
   const rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr & plan_publisher,
   const rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr & nav_path_publisher,
@@ -358,25 +354,14 @@ void publishPlan(const std::vector<geometry_msgs::msg::PoseStamped> & path,
     text.color.g = 1.0;
     text.color.r = 1.0;
     path_idx++;
-
     marker_array.markers.push_back(text);
 
-    /*geometry_msgs::msg::PoseStamped mutable_pose = i;
-    mutable_pose.header.frame_id = "map";
-    mutable_pose.header.stamp = rclcpp::Clock().now();
-    nav_msgs_path.poses.push_back(mutable_pose);
-    nav_msgs_path.header = mutable_pose.header;*/
+    nav_msgs_path.poses.push_back(i);
   }
-  // Publish goal and start states for debuging
-  start_marker.pose = start_pose.pose;
-  start_marker.color.b = 0;
-  start_marker.id = path_idx + 1;
-  goal_marker.pose = goal_pose.pose;
-  goal_marker.color.b = 0;
-  goal_marker.id = path_idx + 2;
-  marker_array.markers.push_back(start_marker);
-  marker_array.markers.push_back(goal_marker);
   plan_publisher->publish(marker_array);
+
+  nav_msgs_path.header.frame_id = "map";
+  nav_msgs_path.header.stamp = rclcpp::Clock().now();
   nav_path_publisher->publish(nav_msgs_path);
 }
 }  // namespace vox_nav_utilities
