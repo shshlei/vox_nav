@@ -31,6 +31,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetTraversabilityMap.srv"
   "action/ComputePathToPose.action"
   "action/ComputeStartToGoal.action"
+  "action/Compute2DStartToGoal.action"
+  "action/Compute2DStartToGoalTrajectory.action"
   "action/FollowPath.action"
   "action/NavigateToPose.action"
   "action/NavigateThroughGPSPoses.action"
@@ -40,6 +42,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   geometry_msgs 
   std_msgs 
   nav_msgs
+  nav_2d_msgs
   sensor_msgs
   shape_msgs
   octomap_msgs

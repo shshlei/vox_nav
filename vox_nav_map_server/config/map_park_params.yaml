@@ -1,4 +1,4 @@
-vox_nav_map_server_rclcpp_node:
+/**:
   ros__parameters:
     pcd_map_filename: /root/park_new/CroppedGlobalMap.pcd # Provide a PCD format map
     # PCD PREPROCESS PARAMS
@@ -32,6 +32,4 @@ vox_nav_map_server_rclcpp_node:
     octomap_voxel_size: 0.3                                                  # determines resolution of Octomap
     octomap_publish_frequency: 1                                             # Used to determine publish frequncy of octomap visuals(pointclouds and markers)
     publish_octomap_visuals: true
-    octomap_point_cloud_publish_topic: "vox_nav/map_server/octomap_pointcloud"                  # sensor_msgs::msg::PoinCloud2 that represents octomap
-    octomap_markers_publish_topic: "vox_nav/map_server/octomap_markers"                         # visualization_msgs::msg::MarkeArray that represents octomap
     map_frame_id: "map"                                                      # This should be consistent with Gloabl EKF node , in robot_localization

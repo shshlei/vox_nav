@@ -20,6 +20,7 @@
 #include <vox_nav_msgs/srv/get_traversability_map.hpp>
 
 #include <geometry_msgs/msg/pose_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <fcl/narrowphase/collision_object.h>
 #include <ompl/base/SpaceInformation.h>
@@ -81,6 +82,11 @@ protected:
 
   // curve radius for reeds and dubins only
   double rho_;
+
+  // Publisher Planner Nodes
+  bool pub_nodes_;
+
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr planner_nodes_pub_;
 };
 }  // namespace vox_nav_planning
 

@@ -20,6 +20,11 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
+set(CMAKE_MODULE_PATH
+    "${CMAKE_MODULE_PATH}"
+    "${CMAKE_ROOT_DIR}/cmake/Modules"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
+
 find_package(PCL 1.7 REQUIRED)
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -28,6 +33,9 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(ompl REQUIRED)
 include_directories(${OMPL_INCLUDE_DIRS})
 link_directories(${OMPL_LIBRARY_DIRS})
+
+find_package(Bullet REQUIRED)
+include_directories(${BULLET_INCLUDE_DIRS})
 
 find_package(Eigen3 REQUIRED)
 # Try for OpenCV 4.X, but settle for whatever is installed
@@ -50,6 +58,23 @@ foreach(LIBFCL_LIBRARY ${LIBFCL_LIBRARIES})
   list(APPEND LIBFCL_LIBRARIES_FULL ${${LIBFCL_LIBRARY}_LIB})
 endforeach()
 set(LIBFCL_LIBRARIES "${LIBFCL_LIBRARIES_FULL}")
+
+find_package(adolc REQUIRED)
+pkg_check_modules(ipopt REQUIRED IMPORTED_TARGET ipopt)
+
+find_package(Box2DCollision REQUIRED)
+
+# BOX2d PLANNER SERVER ##############################################
+ament_auto_add_executable(box2d_planner_server src/box2d_planner_server.cpp src/box2d_planner_core.cpp)
+target_link_libraries(box2d_planner_server ompl /opt/ros/humble/lib/libompl_app_base.so ${BULLET_LIBRARIES})
+
+# BOX2d PLANNER CLIENT ##############################################
+ament_auto_add_executable(box2d_planner_client src/box2d_planner_client.cpp)
+
+# BOX2d PLANNER PSOPT ##############################################
+ament_auto_add_executable(box2d_trajectory_server src/box2d_trajectory_server.cpp)
+target_include_directories(box2d_trajectory_server PUBLIC ${Box2DCollision_INCLUDE_DIR})
+target_link_libraries(box2d_trajectory_server adolc PkgConfig::ipopt ${Box2DCollision_LIBRARY})
 
 # Native Voxnav sampling-based PLANNERS ######################
 ament_auto_add_library(vox_nav_ompl_planners SHARED  src/native_planners/RRTStarF.cpp

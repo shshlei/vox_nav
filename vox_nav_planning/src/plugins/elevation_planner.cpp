@@ -25,6 +25,8 @@
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <ompl/base/PlannerData.h>
+
 #include <octomap_msgs/msg/octomap.hpp>
 #include <octomap_msgs/conversions.h>
 
@@ -96,6 +98,10 @@ void ElevationPlanner::initialize(rclcpp::Node * parent)
   get_traversability_map_client_ = get_map_client_node_->create_client<vox_nav_msgs::srv::GetTraversabilityMap>("get_traversability_map");
   is_map_ready_ = false;
   setupMap();
+
+  pub_nodes_ = parent->declare_parameter("pub_nodes", false);
+  if (pub_nodes_)
+    planner_nodes_pub_ = parent->create_publisher<visualization_msgs::msg::MarkerArray>("vox_nav/elevation_planner/nodes", rclcpp::SystemDefaultsQoS());
 }
 
 std::vector<geometry_msgs::msg::PoseStamped> ElevationPlanner::createPlan(const geometry_msgs::msg::PoseStamped & start, const geometry_msgs::msg::PoseStamped & goal)
@@ -167,10 +173,60 @@ std::vector<geometry_msgs::msg::PoseStamped> ElevationPlanner::createPlan(const 
       pose.pose.orientation.w = this_pose_quat.getW();
       plan_poses.push_back(pose);
     }
-
     RCLCPP_INFO(logger_, "Found A plan with %ld poses", plan_poses.size());
     RCLCPP_INFO(logger_, "Path Length, %s, %.2f", planner_name_.c_str(), solution_path.length());
     RCLCPP_INFO(logger_, "Path Smoothness, %s, %.2f", planner_name_.c_str(), solution_path.smoothness());
+
+    if (pub_nodes_) {
+      ompl::base::PlannerData pd(si);
+      simple_setup_->getPlannerData(pd);
+
+      int node_index_counter = 0;
+      visualization_msgs::msg::MarkerArray planner_nodes;
+      for (unsigned int i = 0; i < pd.numVertices(); i++) {
+        std::vector<unsigned int> edgeList;
+        if (!pd.getEdges(i, edgeList)) continue;
+
+        const ompl::base::State * statei = pd.getVertex(i).getState();
+        const auto * cstatei = statei->as<ompl::base::ElevationStateSpace::StateType>();
+        const auto * xyzvi = cstatei->as<ompl::base::RealVectorStateSpace::StateType>(1);
+        for (unsigned int j : edgeList) {
+          const ompl::base::State * statej = pd.getVertex(j).getState();
+          const auto * cstatej = statej->as<ompl::base::ElevationStateSpace::StateType>();
+          const auto * xyzvj = cstatej->as<ompl::base::RealVectorStateSpace::StateType>(1);
+
+          visualization_msgs::msg::Marker marker;
+          marker.header.frame_id = "map";
+          marker.header.stamp = rclcpp::Clock().now();
+          marker.ns = "planner_nodes";
+          marker.id = node_index_counter;
+          marker.type = visualization_msgs::msg::Marker::LINE_LIST;
+          marker.action = visualization_msgs::msg::Marker::ADD;
+          marker.lifetime = rclcpp::Duration::from_seconds(0);
+          marker.text = std::to_string(node_index_counter);
+          marker.scale.x = 0.08;
+          marker.color.r = 0.84;
+          marker.color.g = 0.1;
+          marker.color.b = 0.1;
+          marker.color.a = 1.0;
+          marker.colors.push_back(marker.color);
+
+          geometry_msgs::msg::Point pointi, pointj;
+          pointi.x = xyzvi->values[0];
+          pointi.y = xyzvi->values[1];
+          pointi.z = xyzvi->values[2];
+          pointj.x = xyzvj->values[0];
+          pointj.y = xyzvj->values[1];
+          pointj.z = xyzvj->values[2];
+          marker.points.push_back(pointi);
+          marker.points.push_back(pointj);
+          planner_nodes.markers.push_back(marker);
+
+          node_index_counter++;
+        }
+      }
+      planner_nodes_pub_->publish(planner_nodes);
+    }
   }
   else {
     RCLCPP_WARN(logger_, "No solution for requested path planning !");

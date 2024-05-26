@@ -24,34 +24,32 @@ from launch.actions import DeclareLaunchArgument
 def generate_launch_description():
     share_dir = get_package_share_directory("vox_nav_map_server")
 
+    pcd_map_filename = LaunchConfiguration("pcd_map_filename")
     map_params = LaunchConfiguration("map_params")
+
+    declare_pcd_map_filename = DeclareLaunchArgument(
+        "pcd_map_filename", default_value="",
+        description="Path to the pointcloud map file.",
+    )
     declare_map_params = DeclareLaunchArgument(
         "map_params", default_value=os.path.join(share_dir, "config", "map_exp_params.yaml"),
         description="Path to the vox_nav map parameters file.",
     )
-    rviz_config_file = os.path.join(share_dir, 'config', 'rviz2.rviz')
 
     map_server_node = Node(
         package="vox_nav_map_server",
         executable="map_manager_no_gps",
-        name="vox_nav_map_server_rclcpp_node",
+        name="vox_nav_map_server_no_gps_rclcpp_node",
         namespace="",
         output="screen",
-        parameters=[map_params],
-    )
-
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        arguments=['-d', rviz_config_file],
-        output='screen'
+        parameters=[{"pcd_map_filename": pcd_map_filename},
+                    map_params],
     )
 
     return LaunchDescription(
         [
+            declare_pcd_map_filename,
             declare_map_params,
             map_server_node,
-            rviz_node,
         ]
     )

@@ -1,0 +1,22 @@
+<launch>
+
+  <arg name="pcd_map_filename" default="/root/experiment_2023_10_28/slam1_new/CroppedGlobalMap.pcd"/>
+  <arg name="map_params" default="$(find-pkg-share vox_nav_map_server)/config/map_exp_params.yaml"/>
+
+  <arg name="rviz" default="true" description="launch rviz"/>
+  <arg name="rviz_config" default="$(find-pkg-share vox_nav_map_server)/config/vox_nav_map_server.rviz" description="rviz config"/>
+  <let name="rviz_respawn" value="false"/>
+
+  <group>
+    <push-ros-namespace namespace="vox_nav_map_server"/>
+    <include file="$(find-pkg-share vox_nav_map_server)/launch/map_loader_no_gps.launch.py">
+      <arg name="pcd_map_filename" value="$(var pcd_map_filename)"/>
+      <arg name="map_params" value="$(var map_params)"/>
+    </include>
+  </group>
+
+  <group>
+    <node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(var rviz_config)" if="$(var rviz)" respawn="$(var rviz_respawn)"/>
+  </group>
+
+</launch>

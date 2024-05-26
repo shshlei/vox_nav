@@ -17,6 +17,8 @@
 #include "vox_nav_utilities/tf_helpers.hpp"
 
 // OMPL GEOMETRIC
+#include <ompl/geometric/planners/ase/BiASE.h>
+#include <ompl/geometric/planners/ase/BiASEstar.h>
 #include <ompl/geometric/planners/rrt/RRT.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
@@ -48,7 +50,13 @@ namespace vox_nav_utilities
 void initializeSelectedPlanner(ompl::base::PlannerPtr & planner, const std::string & selected_planner_name,
   const ompl::base::SpaceInformationPtr & si, const rclcpp::Logger & logger)
 {
-  if (selected_planner_name == std::string("RRT")) {
+  if (selected_planner_name == std::string("BiASE")) {
+    planner = ompl::base::PlannerPtr(new ompl::geometric::BiASE(si));
+  }
+  else if (selected_planner_name == std::string("BiASEstar")) {
+    planner = ompl::base::PlannerPtr(new ompl::geometric::BiASEstar(si));
+  }
+  else if (selected_planner_name == std::string("RRT")) {
     planner = ompl::base::PlannerPtr(new ompl::geometric::RRT(si));
   }
   else if (selected_planner_name == std::string("RRTConnect")) {
@@ -294,7 +302,7 @@ void publishPlan(const std::vector<geometry_msgs::msg::PoseStamped> & path,
 {
   // Clear All previous markers
   visualization_msgs::msg::MarkerArray clear_markers;
-  visualization_msgs::msg::Marker clear_path, rgg_costs, rgg_edges;
+  visualization_msgs::msg::Marker clear_path;
   clear_path.id = 0;
   clear_path.ns = "path";
   clear_path.action = visualization_msgs::msg::Marker::DELETEALL;
@@ -302,7 +310,6 @@ void publishPlan(const std::vector<geometry_msgs::msg::PoseStamped> & path,
   plan_publisher->publish(clear_markers);
 
   visualization_msgs::msg::MarkerArray marker_array;
-  visualization_msgs::msg::Marker start_marker, goal_marker;
   nav_msgs::msg::Path nav_msgs_path;
 
   auto path_idx = 0;
@@ -327,8 +334,6 @@ void publishPlan(const std::vector<geometry_msgs::msg::PoseStamped> & path,
     marker.color.a = 0.5;
     marker.color.r = 1.0;
     marker_array.markers.push_back(marker);
-    start_marker = marker;
-    goal_marker = marker;
 
     double void_s, yaw;
     vox_nav_utilities::getRPYfromMsgQuaternion(i.pose.orientation, void_s, void_s, yaw);

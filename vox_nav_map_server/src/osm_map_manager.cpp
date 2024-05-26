@@ -14,6 +14,8 @@
 
 #include "vox_nav_map_server/osm_map_manager.hpp"
 
+#include <rviz_default_plugins/displays/pointcloud/point_cloud_helpers.hpp>
+
 namespace vox_nav_map_server
 {
 OSMMapManager::OSMMapManager()

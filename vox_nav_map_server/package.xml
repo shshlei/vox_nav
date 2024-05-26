@@ -12,7 +12,6 @@
   <depend>vox_nav_msgs</depend>
   <depend>vox_nav_utilities</depend>
   <depend>rclcpp</depend>
-  <depend>rclcpp_action</depend>
   <depend>visualization_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>

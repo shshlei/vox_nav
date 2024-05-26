@@ -24,19 +24,16 @@ from launch.actions import DeclareLaunchArgument
 def generate_launch_description():
     share_dir = get_package_share_directory("vox_nav_map_server")
 
-    params = LaunchConfiguration("params")
-    localization_params = LaunchConfiguration("localization_params")
+    pcd_map_filename = LaunchConfiguration("pcd_map_filename")
+    map_params = LaunchConfiguration("map_params")
 
-    declare_params = DeclareLaunchArgument(
-        "params",
-        default_value=os.path.join(share_dir, "config", "vox_nav_uneven_world_params.yaml"),
-        description="Path to the vox_nav parameters file.",
+    declare_pcd_map_filename = DeclareLaunchArgument(
+        "pcd_map_filename", default_value="",
+        description="Path to the pointcloud map file.",
     )
-
-    declare_localization_params = DeclareLaunchArgument(
-        "localization_params",
-        default_value=os.path.join(share_dir, "config", "rl_sim_no_map.yaml"),
-        description="Path to the localization parameters file.",
+    declare_map_params = DeclareLaunchArgument(
+        "map_params", default_value=os.path.join(share_dir, "config", "map_exp_params.yaml"),
+        description="Path to the vox_nav map parameters file.",
     )
 
     map_server_node = Node(
@@ -45,13 +42,14 @@ def generate_launch_description():
         name="vox_nav_map_server_rclcpp_node",
         namespace="",
         output="screen",
-        # prefix=['xterm -e gdb -ex run --args'],
-        parameters=[params],
+        parameters=[{"pcd_map_filename": pcd_map_filename},
+                    map_params],
     )
 
     return LaunchDescription(
         [
-            declare_params,
+            declare_pcd_map_filename,
+            declare_map_params,
             map_server_node,
         ]
     )

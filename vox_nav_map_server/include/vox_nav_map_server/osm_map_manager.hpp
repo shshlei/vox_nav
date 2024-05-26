@@ -27,7 +27,6 @@
 #include <rclcpp/service.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <robot_localization/srv/from_ll.hpp>
-#include <rviz_default_plugins/displays/pointcloud/point_cloud_helpers.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 
 #include <geometry_msgs/msg/pose_array.hpp>

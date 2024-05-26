@@ -1,0 +1,15 @@
+/**:
+  ros__parameters:
+    env_shapes_file: /home/shshlei/Autoware-Experiment/src/vox_nav/vox_nav_planning/config/env_shapes.ply
+    num_iterative: 1
+    active_dist: 2.0
+    vehicle_half_length: 0.3
+    vehicle_half_width: 0.3
+    state_space_boundries: 
+      minx: -5.0
+      miny: -8.0
+      maxx: 30.0
+      maxy: 1.0
+    control_space_boundries: 
+      maxv: 3.0
+      maxomega: 1.0

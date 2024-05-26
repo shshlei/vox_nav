@@ -1,0 +1,9 @@
+#goal definition
+nav_2d_msgs/Path2D path
+---
+#result definition
+nav_2d_msgs/Path2D trajectory 
+builtin_interfaces/Duration planning_time
+---
+#feedback
+builtin_interfaces/Duration elapsed_time

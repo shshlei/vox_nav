@@ -1,0 +1,51 @@
+/**:
+  ros__parameters:
+    env_shapes_file: /home/shshlei/Autoware-Experiment/src/vox_nav/vox_nav_planning/config/env_shapes.ply
+    robot_shape_file: /home/shshlei/Autoware-Experiment/src/vox_nav/vox_nav_planning/config/robot_shape.ply
+    check_resolution: 0.01   
+    do_simplification: false 
+    pub_nodes: true
+
+    planner_name: "BiASEstar"
+    planner_timeout: 3.0
+    interpolation_parameter: 25                   # set to 0 if you wanna disable interpolating and smooting, otherwise 25 is a good default value                    
+
+    se2_space: "SE2"                              # "DUBINS","REEDS", "SE2" ### PS. Use DUBINS OR REEDS for Ackermann
+    rho: 2.5                                      # Curve radius form reeds and dubins only
+    state_space_boundries: 
+      minx: -5.0
+      miny: -8.0
+      maxx: 30.0
+      maxy: 1.0
+
+    # passthrough
+    pose_x: [6.1446,  7.34047,  8.27391,  9.48763, 10.1178,
+      11.4036, 12.5512, 13.7449 , 14.4113, 15.6944 ,
+       16.3085, 17.4767, 18.5757 , 19.0524, 20.0162,
+       20.4309 , 21.1067,
+       21.9408, 23.5313]
+    pose_y: [-2.08101, -3.60348, -4.24535, -3.28806, -3.613,
+      -4.05119, -5.14293, -4.73489, -4.4662, -3.09255,
+       -4.00959, -3.92188, -2.96567, -4.22079, -4.07115,
+       -6.43546, -6.02755,
+       -7.29654, -6.74568]
+    pose_yaw: [-0.231646, -0.660765, -0.530362, -0.467959, -0.459306,
+       -0.438025,  0.0747913,  0.363017, 0.373143,  0.146714,
+       0.0801819, 0.0651839, -0.380557  , -0.655674, -0.733082,
+       -0.734475, -0.677983,
+       -0.287284, -0.00459961]
+
+    # exp
+    # min_x: -50.0
+    # min_y: -20.0
+    # max_x: 50.0
+    # max_y: 5.0
+
+    # park
+    # only used when clip map
+    # min_x: -20.0
+    # min_y: -140.0
+    # max_x: 60.0
+    # max_y: 13.0
+    # min_z: -10.0
+    # max_z: 10.0

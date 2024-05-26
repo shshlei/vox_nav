@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+  <arg name="path_planner_params" default="$(find-pkg-share vox_nav_planning)/params/box2d_path_planner_params.yaml"/>
+
+  <group>
+    <push-ros-namespace namespace="vox_nav_planner_server"/>
+    <include file="$(find-pkg-share vox_nav_planning)/launch/box2d_planner_server.launch.py">
+      <arg name="path_planner_params" value="$(var path_planner_params)"/>
+    </include>
+  </group>
+
+</launch>

@@ -53,8 +53,7 @@ void ompl::control::RRTStarF::setup()
   // ros2 node to publish rrt nodes
   node_ = std::make_shared<rclcpp::Node>("rrtstarf_rclcpp_node");
 
-  rrt_nodes_pub_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>("vox_nav/rrtstar/nodes",
-    rclcpp::SystemDefaultsQoS());
+  rrt_nodes_pub_ = node_->create_publisher<visualization_msgs::msg::MarkerArray>("vox_nav/rrtstar/nodes", rclcpp::SystemDefaultsQoS());
 }
 
 void ompl::control::RRTStarF::clear()
@@ -271,21 +270,12 @@ void ompl::control::RRTStarF::getPlannerData(base::PlannerData & data) const
 {
   Planner::getPlannerData(data);
 
-  std::vector<Node *> Nodes;
-  std::vector<Node *> allNodes;
+  std::vector<Node *> nodes;
   if (nn_) {
-    nn_->list(Nodes);
+    nn_->list(nodes);
   }
 
-  for (unsigned i = 0; i < allNodes.size(); i++) {
-    if (allNodes[i]->parent_ != nullptr) {
-      allNodes.push_back(allNodes[i]->parent_);
-    }
-  }
-
-  // double delta = siC_->getPropagationStepSize();
-
-  for (auto m : allNodes) {
+  for (auto m : nodes) {
     if (m->parent_) {
       data.addEdge(base::PlannerDataVertex(m->parent_->state_), base::PlannerDataVertex(m->state_));
     }
